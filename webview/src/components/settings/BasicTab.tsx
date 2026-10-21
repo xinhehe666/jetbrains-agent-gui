@@ -6,18 +6,54 @@ import type {
   UseSettingsThemeSyncReturn,
   UseSettingsBasicActionsReturn,
 } from './hooks';
+import OnboardingSetupCard from './OnboardingSetupCard';
+import type { SettingsTab } from './SettingsSidebar';
+import { deriveOnboardingSetupState } from '../../utils/onboardingSetupState';
 
 interface BasicTabProps {
   themeSync: UseSettingsThemeSyncReturn;
   basicActions: UseSettingsBasicActionsReturn;
   addToast: (message: string, type?: ToastMessage['type']) => void;
+  onNavigateToSettingsTab: (tab: SettingsTab) => void;
+  sdkStatus?: Record<string, { installed?: boolean; status?: string }>;
+  sdkStatusLoading?: boolean;
 }
 
-const BasicTab = ({ themeSync, basicActions, addToast }: BasicTabProps) => {
+const BasicTab = ({
+  themeSync,
+  basicActions,
+  addToast,
+  onNavigateToSettingsTab,
+  sdkStatus,
+  sdkStatusLoading,
+}: BasicTabProps) => {
   const { t } = useTranslation();
+  const claudeSdkStatus = sdkStatus?.['claude-sdk'];
+  const sdkInstalled = claudeSdkStatus?.installed
+    ?? (claudeSdkStatus?.status === 'installed'
+      ? true
+      : claudeSdkStatus?.status === 'not_installed'
+        ? false
+        : undefined);
+  const onboardingSetupState = deriveOnboardingSetupState({
+    node: basicActions.nodeVersion
+      ? {
+          installed: Number.parseInt(basicActions.nodeVersion.replace(/^v/, ''), 10)
+            >= basicActions.minNodeVersion,
+        }
+      : { status: 'actionRequired' },
+    claudeCli: basicActions.claudeCliPath.trim()
+      ? { installed: true }
+      : { status: 'optional' },
+    sdk: sdkInstalled === undefined
+      ? { status: sdkStatusLoading ? 'checking' : 'actionRequired' }
+      : { installed: sdkInstalled },
+  });
 
   return (
-    <BasicConfigSection
+    <>
+      <OnboardingSetupCard state={onboardingSetupState} onNavigate={onNavigateToSettingsTab} />
+      <BasicConfigSection
       theme={themeSync.themePreference}
       onThemeChange={themeSync.setThemePreference}
       fontSizeLevel={themeSync.fontSizeLevel}
@@ -108,7 +144,8 @@ const BasicTab = ({ themeSync, basicActions, addToast }: BasicTabProps) => {
       onAskUserQuestionSoundNotificationEnabledChange={basicActions.handleAskUserQuestionSoundNotificationEnabledChange}
       permissionDialogTimeoutSeconds={basicActions.permissionDialogTimeoutSeconds}
       onPermissionDialogTimeoutChange={basicActions.handlePermissionDialogTimeoutChange}
-    />
+      />
+    </>
   );
 };
 

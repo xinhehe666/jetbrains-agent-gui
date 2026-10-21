@@ -111,6 +111,8 @@ const App = () => {
           codexSandboxSource={model.codexSandboxSource}
           codexSandboxEffective={model.codexEffectiveSandbox}
           onCodexSandboxSelectionChange={model.handleCodexSandboxSelectionChange}
+          sdkStatus={model.sdkStatus}
+          sdkStatusLoading={model.sdkStatusLoading}
         />
       ) : (
         <AppChatArea
