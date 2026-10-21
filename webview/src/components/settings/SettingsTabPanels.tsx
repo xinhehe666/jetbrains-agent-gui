@@ -1,5 +1,6 @@
 import type { ToastMessage } from '../Toast';
 import type { ProviderManageTab } from './ProviderTabSection';
+import type { SettingsTab } from './SettingsSidebar';
 import BasicTab from './BasicTab';
 import ProviderTabSection from './ProviderTabSection';
 import DependencySection from './DependencySection';
@@ -30,10 +31,27 @@ export interface SettingsTabPanelProps {
   providerManagement: UseProviderManagementReturn;
   codexProviderManagement: UseCodexProviderManagementReturn;
   agentManagement: UseAgentManagementReturn;
+  navigateToSettingsTab: (tab: SettingsTab) => void;
+  sdkStatus?: Record<string, { installed?: boolean; status?: string }>;
+  sdkStatusLoading?: boolean;
 }
 
-export const BasicPanel = ({ themeSync, basicActions, addToast }: SettingsTabPanelProps) => (
-  <BasicTab themeSync={themeSync} basicActions={basicActions} addToast={addToast} />
+export const BasicPanel = ({
+  themeSync,
+  basicActions,
+  addToast,
+  navigateToSettingsTab,
+  sdkStatus,
+  sdkStatusLoading,
+}: SettingsTabPanelProps) => (
+  <BasicTab
+    themeSync={themeSync}
+    basicActions={basicActions}
+    addToast={addToast}
+    onNavigateToSettingsTab={navigateToSettingsTab}
+    sdkStatus={sdkStatus}
+    sdkStatusLoading={sdkStatusLoading}
+  />
 );
 
 export const ProvidersPanel = ({

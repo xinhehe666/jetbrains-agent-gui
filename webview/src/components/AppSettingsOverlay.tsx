@@ -20,6 +20,8 @@ interface AppSettingsOverlayProps {
   codexSandboxSource?: string;
   codexSandboxEffective?: 'read-only' | 'workspace-write' | 'danger-full-access' | null;
   onCodexSandboxSelectionChange?: (mode: 'read-only' | 'workspace-write' | 'danger-full-access') => void;
+  sdkStatus?: Record<string, { installed?: boolean; status?: string }>;
+  sdkStatusLoading?: boolean;
 }
 
 /**

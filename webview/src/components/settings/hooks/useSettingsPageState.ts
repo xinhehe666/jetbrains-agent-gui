@@ -21,6 +21,7 @@ export interface UseSettingsPageStateReturn {
   };
   isCollapsed: boolean;
   handleTabChange: (tab: SettingsTab) => void;
+  navigateToSettingsTab: (tab: SettingsTab) => void;
   toggleManualCollapse: () => void;
   showAlert: (type: AlertType, title: string, message: string) => void;
   closeAlert: () => void;
@@ -89,7 +90,7 @@ export function useSettingsPageState({
     }
   }, [isCodexMode, disabledTabs, currentTab]);
 
-  const handleTabChange = useCallback(
+  const navigateToSettingsTab = useCallback(
     (tab: SettingsTab) => {
       if (isCodexMode && disabledTabs.includes(tab)) {
         setToasts((prev) => [
@@ -106,6 +107,8 @@ export function useSettingsPageState({
     },
     [isCodexMode, disabledTabs, t]
   );
+
+  const handleTabChange = navigateToSettingsTab;
 
   const toggleManualCollapse = useCallback(() => {
     if (manualCollapsed === null) {
@@ -144,6 +147,7 @@ export function useSettingsPageState({
     alertDialog,
     isCollapsed,
     handleTabChange,
+    navigateToSettingsTab,
     toggleManualCollapse,
     showAlert,
     closeAlert,

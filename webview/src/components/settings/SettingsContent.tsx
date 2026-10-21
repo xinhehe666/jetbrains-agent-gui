@@ -53,6 +53,9 @@ interface SettingsContentProps {
   providerManagement: UseProviderManagementReturn;
   codexProviderManagement: UseCodexProviderManagementReturn;
   agentManagement: UseAgentManagementReturn;
+  navigateToSettingsTab: (tab: SettingsTab) => void;
+  sdkStatus?: Record<string, { installed?: boolean; status?: string }>;
+  sdkStatusLoading?: boolean;
 }
 
 // Content area — mount only the active tab.
@@ -68,6 +71,9 @@ const SettingsContent = ({
   providerManagement,
   codexProviderManagement,
   agentManagement,
+  navigateToSettingsTab,
+  sdkStatus,
+  sdkStatusLoading,
 }: SettingsContentProps) => {
   const ActivePanel = TAB_PANELS[currentTab];
   return (
@@ -81,6 +87,9 @@ const SettingsContent = ({
         providerManagement={providerManagement}
         codexProviderManagement={codexProviderManagement}
         agentManagement={agentManagement}
+        navigateToSettingsTab={navigateToSettingsTab}
+        sdkStatus={sdkStatus}
+        sdkStatusLoading={sdkStatusLoading}
       />
     </div>
   );

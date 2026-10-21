@@ -1,0 +1,112 @@
+.card {
+  max-width: 800px;
+  margin-bottom: 24px;
+  padding: 18px;
+  border: 1px solid var(--border-secondary);
+  border-radius: 10px;
+  background: var(--bg-secondary);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.title {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.description {
+  margin: 6px 0 0;
+  color: var(--text-tertiary);
+  font-size: 13px;
+}
+
+.dismissButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+  }
+}
+
+.checklist {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.statusIcon {
+  color: var(--text-tertiary);
+}
+
+.itemLabel {
+  flex: 1;
+}
+
+.status {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.ready {
+  color: var(--success-foreground, #4ec9b0);
+}
+
+.actionRequired {
+  color: var(--warning-foreground, #cca700);
+}
+
+.checking {
+  color: var(--text-tertiary);
+}
+
+.complete {
+  color: var(--success-foreground, #4ec9b0);
+}
+
+.optional {
+  color: var(--text-tertiary);
+}
+
+.nextButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border: 1px solid var(--button-primary-background, #0078d4);
+  border-radius: 5px;
+  background: var(--button-primary-background, #0078d4);
+  color: var(--button-primary-foreground, #ffffff);
+  cursor: pointer;
+  font-size: 13px;
+
+  &:hover {
+    background: var(--button-primary-hover-background, #006cbd);
+  }
+}

@@ -49,6 +49,8 @@ interface SettingsViewProps {
   codexSandboxSource?: string;
   codexSandboxEffective?: 'read-only' | 'workspace-write' | 'danger-full-access' | null;
   onCodexSandboxSelectionChange?: (mode: 'read-only' | 'workspace-write' | 'danger-full-access') => void;
+  sdkStatus?: Record<string, { installed?: boolean; status?: string }>;
+  sdkStatusLoading?: boolean;
 }
 
 const SettingsView = ({
@@ -68,6 +70,8 @@ const SettingsView = ({
   codexSandboxSource: codexSandboxSourceProp,
   codexSandboxEffective: codexSandboxEffectiveProp,
   onCodexSandboxSelectionChange: onCodexSandboxSelectionChangeProp,
+  sdkStatus,
+  sdkStatusLoading,
 }: SettingsViewProps) => {
   const { t } = useTranslation();
   const isCodexMode = currentProvider === 'codex';
@@ -189,6 +193,9 @@ const SettingsView = ({
           providerManagement={providerManagement}
           codexProviderManagement={codexProviderManagement}
           agentManagement={agentManagement}
+          navigateToSettingsTab={pageState.navigateToSettingsTab}
+          sdkStatus={sdkStatus}
+          sdkStatusLoading={sdkStatusLoading}
         />
       </div>
 
