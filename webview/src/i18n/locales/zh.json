@@ -169,6 +169,37 @@
   },
   "settings": {
     "title": "设置",
+    "onboarding": {
+      "title": "完成环境设置",
+      "description": "完成以下步骤，开始使用 AI 功能。",
+      "steps": {
+        "node": {
+          "title": "安装 Node.js",
+          "description": "安装 Node.js，然后在基础配置中设置其路径。"
+        },
+        "claudeCli": {
+          "title": "配置 Claude CLI",
+          "description": "如需复用 CLI 登录状态，请安装 Claude CLI 并完成登录。"
+        },
+        "sdk": {
+          "title": "安装 SDK 依赖",
+          "description": "打开 SDK 依赖，首次使用前安装所需依赖包。"
+        }
+      },
+      "status": {
+        "ready": "就绪",
+        "actionRequired": "需要操作",
+        "complete": "已完成",
+        "checking": "检查中",
+        "optional": "可选"
+      },
+      "action": {
+        "openEnvironment": "打开环境设置",
+        "openDependencies": "打开 SDK 依赖",
+        "dismiss": "关闭引导"
+      },
+      "dismissedHint": "引导已关闭，可在设置中继续完成配置。"
+    },
     "basic": {
       "title": "基础配置",
       "description": "配置页面主题、语言和 Node.js 运行环境",
