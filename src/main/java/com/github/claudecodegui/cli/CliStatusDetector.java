@@ -1,14 +1,12 @@
 package com.github.claudecodegui.cli;
 
 import com.github.claudecodegui.util.PlatformUtils;
+import com.github.claudecodegui.util.ProcessOutputDrainer;
 import com.github.claudecodegui.dependency.DependencyManager;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.diagnostic.Logger;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -32,6 +30,8 @@ public final class CliStatusDetector {
 
     private static final Logger LOG = Logger.getInstance(CliStatusDetector.class);
     private static final int PROBE_TIMEOUT_SECONDS = 5;
+    private static final int OUTPUT_CAPTURE_LIMIT = 4000;
+    private static final int OUTPUT_DRAIN_TIMEOUT_SECONDS = 2;
     private static final long CACHE_TTL_MILLIS = 30_000L;
     private static final Pattern VERSION_TOKEN = Pattern.compile(
             "(\\d+\\.\\d+(?:\\.\\d+)?(?:[-+][A-Za-z0-9.]+)?)"
@@ -653,6 +653,7 @@ public final class CliStatusDetector {
 
     private static ProcessResult run(List<String> command, String extraBinDir) {
         Process process = null;
+        ProcessOutputDrainer drainer = null;
         try {
             ProcessBuilder pb = new ProcessBuilder(command);
             pb.redirectErrorStream(true);
@@ -660,29 +661,27 @@ public final class CliStatusDetector {
             // Ensure common user bin dirs are on PATH for IDE-launched processes.
             enrichPath(env, extraBinDir);
             process = pb.start();
-            // Bound the wait first so a hung child cannot block the probe:
-            // expected output is a tiny version string that will not fill the
-            // OS pipe buffer before exit, so draining after waitFor is safe.
+
+            StringBuilder output = new StringBuilder();
+            drainer = ProcessOutputDrainer.start(process, line -> {
+                if (output.length() >= OUTPUT_CAPTURE_LIMIT) {
+                    return;
+                }
+                if (output.length() > 0) {
+                    output.append('\n');
+                }
+                int remaining = OUTPUT_CAPTURE_LIMIT - output.length();
+                output.append(line, 0, Math.min(line.length(), remaining));
+            });
+
             boolean finished = process.waitFor(PROBE_TIMEOUT_SECONDS, TimeUnit.SECONDS);
             if (!finished) {
                 process.destroyForcibly();
+                awaitDrainer(drainer);
                 return ProcessResult.timeout();
             }
-            StringBuilder output = new StringBuilder();
-            try (BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    if (output.length() > 0) {
-                        output.append('\n');
-                    }
-                    output.append(line);
-                    // Cap capture — version probes are short.
-                    if (output.length() > 4000) {
-                        break;
-                    }
-                }
-            }
+
+            awaitDrainer(drainer);
             String text = output.toString().trim();
             return new ProcessResult(process.exitValue(), text, text);
         } catch (Exception e) {
@@ -692,6 +691,22 @@ public final class CliStatusDetector {
             if (process != null && process.isAlive()) {
                 process.destroyForcibly();
             }
+            if (drainer != null) {
+                drainer.cancel();
+            }
+        }
+    }
+
+    private static void awaitDrainer(ProcessOutputDrainer drainer) {
+        try {
+            if (!drainer.await(OUTPUT_DRAIN_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+                LOG.debug("[CliStatusDetector] Output drain timed out");
+                drainer.cancel();
+                drainer.await(1, TimeUnit.SECONDS);
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            drainer.cancel();
         }
     }
 
@@ -831,30 +846,42 @@ public final class CliStatusDetector {
         command.add(buildLookupScript(fish));
 
         Process process = null;
+        ProcessOutputDrainer drainer = null;
         try {
             ProcessBuilder pb = new ProcessBuilder(command);
             // Keep stderr separate: interactive shells print prompts / job-control
             // noise there; merging would corrupt the key=value parse.
             pb.redirectErrorStream(false);
             process = pb.start();
+
+            StringBuilder output = new StringBuilder();
+            drainer = ProcessOutputDrainer.start(
+                    process,
+                    line -> {
+                        if (output.length() >= OUTPUT_CAPTURE_LIMIT) {
+                            return;
+                        }
+                        if (output.length() > 0) {
+                            output.append('\n');
+                        }
+                        int remaining = OUTPUT_CAPTURE_LIMIT - output.length();
+                        output.append(line, 0, Math.min(line.length(), remaining));
+                    },
+                    line -> {
+                        // stderr is intentionally discarded, but must still be drained.
+                    }
+            );
+
             boolean finished = process.waitFor(LOGIN_SHELL_TIMEOUT_SECONDS, TimeUnit.SECONDS);
             if (!finished) {
                 process.destroyForcibly();
+                awaitDrainer(drainer);
                 LOG.warn("[CliStatusDetector] Login-shell lookup timed out after "
                         + LOGIN_SHELL_TIMEOUT_SECONDS + "s");
                 return Map.of();
             }
-            StringBuilder output = new StringBuilder();
-            try (BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    output.append(line).append('\n');
-                    if (output.length() > 4000) {
-                        break;
-                    }
-                }
-            }
+
+            awaitDrainer(drainer);
             return parseLoginShellLookup(output.toString());
         } catch (Exception e) {
             LOG.debug("[CliStatusDetector] Login-shell lookup failed: " + e.getMessage());
@@ -862,6 +889,9 @@ public final class CliStatusDetector {
         } finally {
             if (process != null && process.isAlive()) {
                 process.destroyForcibly();
+            }
+            if (drainer != null) {
+                drainer.cancel();
             }
         }
     }

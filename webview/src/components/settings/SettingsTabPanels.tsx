@@ -12,7 +12,6 @@ import PromptSection from './PromptSection';
 import CommitSection from './CommitSection';
 import PromptEnhancerSection from './PromptEnhancerSection';
 import OtherSettingsSection from './OtherSettingsSection';
-import PetSettingsSection from './PetSettingsSection';
 import { SkillsSettingsSection } from '../skills/SkillsSettingsSection';
 import type {
   UseSettingsThemeSyncReturn,
@@ -136,10 +135,6 @@ export const PromptsPanel = ({ currentProvider, addToast }: SettingsTabPanelProp
 
 export const SkillsPanel = ({ currentProvider }: SettingsTabPanelProps) => (
   <SkillsSettingsSection currentProvider={currentProvider} />
-);
-
-export const PetPanel = ({ addToast }: SettingsTabPanelProps) => (
-  <PetSettingsSection addToast={addToast} />
 );
 
 export const OtherPanel = ({ basicActions }: SettingsTabPanelProps) => (

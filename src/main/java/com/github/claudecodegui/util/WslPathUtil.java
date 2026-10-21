@@ -2,16 +2,14 @@ package com.github.claudecodegui.util;
 
 import com.intellij.openapi.diagnostic.Logger;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 /** WSL path utilities: pure path-string conversions and WSL-home lookups. */
 public final class WslPathUtil {
@@ -118,12 +116,24 @@ public final class WslPathUtil {
             ProcessBuilder pb = new ProcessBuilder("wsl", "-e", "test", "-f", wslPath);
             pb.redirectErrorStream(true);
             Process p = pb.start();
-            boolean finished = p.waitFor(3, TimeUnit.SECONDS);
-            if (!finished) {
-                p.destroyForcibly();
-                return false;
+            ProcessOutputDrainer drainer = ProcessOutputDrainer.start(p, line -> {
+                // Drain diagnostics so a chatty WSL process cannot block on a full pipe.
+            });
+            try {
+                boolean finished = p.waitFor(3, TimeUnit.SECONDS);
+                if (!finished) {
+                    p.destroyForcibly();
+                    drainer.cancel();
+                    return false;
+                }
+                drainer.await(1, TimeUnit.SECONDS);
+                return p.exitValue() == 0;
+            } finally {
+                if (p.isAlive()) {
+                    p.destroyForcibly();
+                }
+                drainer.cancel();
             }
-            return p.exitValue() == 0;
         } catch (Exception e) {
             LOG.debug("[WslPathUtil] wslFileExists check failed for " + wslPath + ": " + e.getMessage());
             return false;
@@ -206,16 +216,30 @@ public final class WslPathUtil {
                 ProcessBuilder pb = new ProcessBuilder("wsl", "sh", "-c", "wslpath -w $HOME");
                 pb.redirectErrorStream(true);
                 Process process = pb.start();
-                String line = null;
-                try (BufferedReader reader = new BufferedReader(
-                        new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
-                    line = reader.readLine();
-                }
-                boolean finished = process.waitFor(5, TimeUnit.SECONDS);
-                if (finished && process.exitValue() == 0
-                        && line != null && line.trim().startsWith("\\\\")) {
-                    cachedWslHomeUncPath = line.trim();
-                    LOG.info("[WslPathUtil] Resolved WSL home UNC path: " + cachedWslHomeUncPath);
+                AtomicReference<String> firstLine = new AtomicReference<>();
+                ProcessOutputDrainer drainer = ProcessOutputDrainer.start(
+                        process,
+                        line -> firstLine.compareAndSet(null, line)
+                );
+                try {
+                    boolean finished = process.waitFor(5, TimeUnit.SECONDS);
+                    if (!finished) {
+                        process.destroyForcibly();
+                        drainer.cancel();
+                        return cachedWslHomeUncPath;
+                    }
+                    drainer.await(1, TimeUnit.SECONDS);
+                    String line = firstLine.get();
+                    if (process.exitValue() == 0
+                            && line != null && line.trim().startsWith("\\\\")) {
+                        cachedWslHomeUncPath = line.trim();
+                        LOG.info("[WslPathUtil] Resolved WSL home UNC path: " + cachedWslHomeUncPath);
+                    }
+                } finally {
+                    if (process.isAlive()) {
+                        process.destroyForcibly();
+                    }
+                    drainer.cancel();
                 }
             } catch (Exception e) {
                 LOG.warn("[WslPathUtil] Failed to resolve WSL home UNC path: " + e.getMessage());

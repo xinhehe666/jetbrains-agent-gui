@@ -278,9 +278,10 @@ public class PermissionServiceRefactorTest {
             Files.writeString(permissionDir.resolve("plan-approval-session-a-3.json"), "{}");
             Files.writeString(permissionDir.resolve("plan-approval-response-session-a-3.json"), "{}");
 
-            assertEquals(1, protocol.listPermissionRequestFiles().length);
-            assertEquals(1, protocol.listAskUserQuestionRequestFiles().length);
-            assertEquals(1, protocol.listPlanApprovalRequestFiles().length);
+            PermissionFileProtocol.RequestFilesSnapshot snapshot = protocol.listRequestFilesSnapshot();
+            assertEquals(1, snapshot.getPermissionRequests().length);
+            assertEquals(1, snapshot.getAskUserQuestionRequests().length);
+            assertEquals(1, snapshot.getPlanApprovalRequests().length);
         } finally {
             deleteDirectory(permissionDir);
         }

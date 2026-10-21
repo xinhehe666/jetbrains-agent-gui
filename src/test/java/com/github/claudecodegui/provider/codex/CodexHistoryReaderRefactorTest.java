@@ -250,7 +250,8 @@ public class CodexHistoryReaderRefactorTest {
         third.lastTimestamp = Instant.parse("2026-03-11T08:05:00Z").toEpochMilli();
         third.cwd = "/workspace/other";
 
-        List<SessionInfo> deduplicated = CodexHistoryIndexService.deduplicateSessions(List.of(first, second, third));
+        List<SessionInfo> deduplicated =
+                CodexHistoryDeduplicator.deduplicate(List.of(first, second, third));
 
         assertEquals(2, deduplicated.size());
         assertEquals("thread-2", deduplicated.get(0).sessionId);

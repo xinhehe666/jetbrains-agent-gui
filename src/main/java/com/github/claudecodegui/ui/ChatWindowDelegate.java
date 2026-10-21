@@ -10,7 +10,6 @@ import com.github.claudecodegui.handler.CodexInteractionHandler;
 import com.github.claudecodegui.handler.CodexNativeDataHandler;
 import com.github.claudecodegui.handler.CodexWorkspaceDiffHandler;
 import com.github.claudecodegui.handler.CodexMcpServerHandler;
-import com.github.claudecodegui.handler.CodexPetHandler;
 import com.github.claudecodegui.handler.CliModelsHandler;
 import com.github.claudecodegui.handler.CliStatusHandler;
 import com.github.claudecodegui.handler.DshHostHandler;
@@ -27,7 +26,6 @@ import com.github.claudecodegui.handler.PermissionHandler;
 import com.github.claudecodegui.handler.PromptEnhancerHandler;
 import com.github.claudecodegui.handler.PromptHandler;
 import com.github.claudecodegui.handler.provider.CustomModelPricingHandler;
-import com.github.claudecodegui.handler.provider.ModelProviderHandler;
 import com.github.claudecodegui.handler.provider.ProviderHandler;
 import com.github.claudecodegui.handler.provider.claude.ClaudePlanUsageHandler;
 import com.github.claudecodegui.handler.RewindHandler;
@@ -379,7 +377,6 @@ public class ChatWindowDelegate {
         messageDispatcher.registerHandler(new McpMarketplaceHandler(handlerContext));
         messageDispatcher.registerHandler(new McpServerImportHandler(handlerContext));
         messageDispatcher.registerHandler(new CodexMcpServerHandler(handlerContext, settingsService.getCodexMcpServerManager()));
-        messageDispatcher.registerHandler(new CodexPetHandler(handlerContext));
         messageDispatcher.registerHandler(new SkillHandler(handlerContext));
         messageDispatcher.registerHandler(new FileHandler(handlerContext));
         this.settingsHandler = new SettingsHandler(handlerContext);
@@ -681,7 +678,7 @@ public class ChatWindowDelegate {
             return;
         }
 
-        String payload = buildBackendTabStateJson(
+        String payload = ChatWindowRecoveryState.buildTabStateJson(
                 session.getProvider(),
                 session.getModel(),
                 session.getPermissionMode(),
@@ -702,13 +699,13 @@ public class ChatWindowDelegate {
             String reasoningEffort,
             String codexServiceTier
     ) {
-        JsonObject state = new JsonObject();
-        state.addProperty("provider", provider);
-        state.addProperty("model", model);
-        state.addProperty("permissionMode", permissionMode);
-        state.addProperty("reasoningEffort", reasoningEffort);
-        state.addProperty("codexFastMode", "fast".equals(codexServiceTier) ? "fast" : "normal");
-        return state.toString();
+        return ChatWindowRecoveryState.buildTabStateJson(
+                provider,
+                model,
+                permissionMode,
+                reasoningEffort,
+                codexServiceTier
+        );
     }
 
     /**
@@ -724,7 +721,7 @@ public class ChatWindowDelegate {
         }
 
         UsagePushService usagePushService = new UsagePushService(context);
-        usagePushService.pushCurrentUsageIfAvailable(resolveModelContextLimitForRecovery(
+        usagePushService.pushCurrentUsageIfAvailable(ChatWindowRecoveryState.resolveModelContextLimit(
                 session.getProvider(),
                 session.getModel(),
                 context.getSettingsService()
@@ -741,26 +738,7 @@ public class ChatWindowDelegate {
             String model,
             CodemossSettingsService settingsService
     ) {
-        if ("codex".equalsIgnoreCase(provider)) {
-            return SettingsHandler.getModelContextLimit(provider, model);
-        }
-
-        String resolvedModel = model;
-        if (settingsService != null) {
-            try {
-                JsonObject settings = settingsService.readClaudeSettings();
-                if (settings != null && settings.has("env") && settings.get("env").isJsonObject()) {
-                    resolvedModel = ModelProviderHandler.resolveConfiguredClaudeModel(
-                            model,
-                            settings.getAsJsonObject("env")
-                    );
-                }
-            } catch (Exception e) {
-                LOG.warn("Failed to resolve configured Claude model during WebView recovery: "
-                        + e.getMessage());
-            }
-        }
-        return SettingsHandler.getModelContextLimit(resolvedModel);
+        return ChatWindowRecoveryState.resolveModelContextLimit(provider, model, settingsService);
     }
 
     private void replayCurrentSessionStateToFrontend() {

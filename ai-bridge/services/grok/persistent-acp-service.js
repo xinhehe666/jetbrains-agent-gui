@@ -97,6 +97,19 @@ function makeRuntimeKey(params) {
   return [epoch, sid, cwd, model, perm, authFp + '|' + baseFp].join('|');
 }
 
+function prepareRuntimeParams(params = {}) {
+  const prepared = { ...params };
+  const resolvedAuth = resolveEffectiveGrokAuth({
+    preferredAuth: prepared.authMethod || process.env.GROK_AUTH_METHOD || '',
+    apiKey: prepared.apiKey || '',
+    baseUrl: prepared.baseUrl || '',
+  });
+  prepared.authMethod = resolvedAuth.authMethod;
+  prepared.apiKey = resolvedAuth.apiKey;
+  prepared.baseUrl = resolvedAuth.baseUrl;
+  return prepared;
+}
+
 function getRuntime(key) {
   return runtimes.get(key) || null;
 }
@@ -172,7 +185,8 @@ runtimeCleanupTimer.unref();
 // Runtime lifecycle
 // =============================================================================
 
-async function createRuntime(params, { log } = {}) {
+async function createRuntime(inputParams, { log } = {}) {
+  const params = prepareRuntimeParams(inputParams);
   const key = makeRuntimeKey(params);
   const existing = getRuntime(key);
   if (existing && !existing.closed) {
@@ -186,23 +200,11 @@ async function createRuntime(params, { log } = {}) {
   }
 
   const workCwd = (params.cwd || '').trim() || process.cwd();
-  // Resolve OAuth-empty → config.toml api_key before env/auth so ACP does not
-  // open device-code login when CLI-native credentials exist.
-  const resolvedAuth = resolveEffectiveGrokAuth({
-    preferredAuth: params.authMethod || process.env.GROK_AUTH_METHOD || '',
-    apiKey: params.apiKey || '',
-    baseUrl: params.baseUrl || '',
-  });
-  // Mutate params so later turns / logs see the effective method.
-  params.authMethod = resolvedAuth.authMethod;
-  params.apiKey = resolvedAuth.apiKey;
-  params.baseUrl = resolvedAuth.baseUrl;
-
   const env = buildGrokEnv(
     process.env,
-    resolvedAuth.apiKey,
-    resolvedAuth.baseUrl,
-    resolvedAuth.authMethod,
+    params.apiKey,
+    params.baseUrl,
+    params.authMethod,
     false
   );
   env.GROK_NO_AUTO_UPDATE = '1';
@@ -498,7 +500,6 @@ async function executeTurn(runtime, params, normalizer) {
 // =============================================================================
 
 export async function sendMessagePersistent(params = {}) {
-  const key = makeRuntimeKey(params);
   let runtime;
   try {
     runtime = await createRuntime(params);

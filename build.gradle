@@ -91,6 +91,9 @@ if (localJavaHome) {
 }
 
 repositories {
+    // Keep a reachable Maven Central mirror first for networks where the
+    // official endpoint or JetBrains cache redirector cannot complete TLS.
+    maven { url = uri('https://maven.aliyun.com/repository/public') }
     mavenCentral()
     intellijPlatform {
         defaultRepositories()
@@ -102,7 +105,6 @@ dependencies {
     implementation 'org.tomlj:tomlj:1.1.1'
     implementation 'javazoom:jlayer:1.0.1'
     implementation 'org.snakeyaml:snakeyaml-engine:3.0.1'
-    implementation 'com.twelvemonkeys.imageio:imageio-webp:3.12.0'
     // OpenCode 1.x stores sessions in ~/.local/share/opencode/opencode.db
     implementation 'org.xerial:sqlite-jdbc:3.46.1.3'
     testImplementation 'junit:junit:4.13.2'
@@ -378,7 +380,23 @@ def skipWebviewBuild = (project.findProperty('skipWebview') ?: 'false').toString
 // Get custom Node.js path from local properties
 def localNodePath = getLocalProperty('node.path')
 
+// Keep a fresh checkout buildable without requiring a manual `npm ci` first.
+tasks.register('installWebviewDependencies', Exec) {
+    onlyIf { webviewDir.exists() && !skipWebviewBuild }
+    workingDir webviewDir
+    inputs.files(new File(webviewDir, 'package.json'), new File(webviewDir, 'package-lock.json'))
+    // npm ci writes this marker after synchronizing the dependency tree. Using
+    // a single output avoids Gradle snapshotting hundreds of thousands of files.
+    outputs.file(new File(webviewDir, 'node_modules/.package-lock.json'))
+    if (System.getProperty('os.name').toLowerCase().contains('windows')) {
+        commandLine 'cmd', '/c', 'npm', 'ci', '--silent', '--loglevel=error'
+    } else {
+        commandLine 'npm', 'ci', '--silent', '--loglevel=error'
+    }
+}
+
 tasks.register('buildWebview', Exec) {
+    dependsOn('installWebviewDependencies')
     workingDir webviewDir
     environment 'VITE_ENABLE_VCONSOLE', enableVConsoleInWebview ? 'true' : 'false'
 

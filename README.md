@@ -100,34 +100,36 @@ For contributing guidelines, please read [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ## Local Development and Debugging
 
-### 1. Install Frontend Dependencies
+### 1. Prerequisites
+
+- JDK 17 (the source and Gradle Java toolchain target Java 17; JDK 21 is not required)
+- Node.js 20+ and npm
+
+Verify the active environment first:
 
 ```bash
-cd webview
-npm install
+java -version
+node --version
+npm --version
 ```
 
-### 2. Install ai-bridge Dependencies
+### 2. Debug Plugin
 
-```bash
-cd ai-bridge
-npm install
-```
-
-### 3. Debug Plugin
-
-Run in IDEA:
 ```bash
 ./gradlew clean runIde
 ```
 
-### 4. Build Plugin
+Gradle runs `npm ci` from the lockfiles automatically, so there is no need to install dependencies manually in `webview` or `ai-bridge` first.
 
-```sh
+### 3. Build Plugin
+
+```bash
 ./gradlew clean buildPlugin
 
 # The generated plugin package will be in the build/distributions/ directory (package size approximately 40MB)
 ```
+
+TLS, timeout, or connection-reset errors while downloading Maven artifacts are repository/network failures rather than Java compilation errors. The project includes a Maven Central fallback mirror; rerunning the build also reuses artifacts that were already downloaded.
 
 ---
 

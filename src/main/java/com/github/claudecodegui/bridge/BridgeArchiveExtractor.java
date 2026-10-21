@@ -1,6 +1,7 @@
 package com.github.claudecodegui.bridge;
 
 import com.github.claudecodegui.util.PlatformUtils;
+import com.github.claudecodegui.util.ProcessOutputDrainer;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.util.io.FileUtil;
@@ -12,6 +13,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.concurrent.TimeUnit;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -106,6 +108,7 @@ final class BridgeArchiveExtractor {
      */
     private static boolean executeSystemUnzip(File archiveFile, File targetDir, ProgressIndicator indicator) {
         Process process = null;
+        ProcessOutputDrainer drainer = null;
         try {
             ProcessBuilder pb;
             if (System.getProperty("os.name").toLowerCase().contains("windows")) {
@@ -118,23 +121,22 @@ final class BridgeArchiveExtractor {
 
             pb.redirectErrorStream(true);
             process = pb.start();
+            drainer = ProcessOutputDrainer.start(
+                    process,
+                    line -> LOG.debug("[BridgeResolver] unzip: " + line)
+            );
 
-            // Read output to prevent blocking
-            try (java.io.BufferedReader reader = new java.io.BufferedReader(
-                    new java.io.InputStreamReader(process.getInputStream()))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    LOG.debug("[BridgeResolver] unzip: " + line);
-                }
-            }
-
-            // Add timeout (5 minutes) to prevent hanging
-            if (!process.waitFor(5, java.util.concurrent.TimeUnit.MINUTES)) {
+            if (!process.waitFor(5, TimeUnit.MINUTES)) {
                 LOG.warn("[BridgeResolver] Unzip process timeout, killing...");
                 process.destroyForcibly();
+                drainer.cancel();
                 return false;
             }
 
+            if (!drainer.await(2, TimeUnit.SECONDS)) {
+                LOG.debug("[BridgeResolver] Unzip output drain timed out");
+                drainer.cancel();
+            }
             return process.exitValue() == 0;
         } catch (Exception e) {
             LOG.debug("[BridgeResolver] System unzip failed: " + e.getMessage());
@@ -144,6 +146,9 @@ final class BridgeArchiveExtractor {
             if (process != null && process.isAlive()) {
                 LOG.warn("[BridgeResolver] Forcibly destroying unzip process");
                 process.destroyForcibly();
+            }
+            if (drainer != null) {
+                drainer.cancel();
             }
         }
     }

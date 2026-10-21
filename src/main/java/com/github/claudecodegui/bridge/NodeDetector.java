@@ -2,14 +2,12 @@ package com.github.claudecodegui.bridge;
 
 import com.github.claudecodegui.model.NodeDetectionResult;
 import com.github.claudecodegui.util.PlatformUtils;
+import com.github.claudecodegui.util.ProcessOutputDrainer;
 import com.github.claudecodegui.util.ShellExecutor;
 import com.github.claudecodegui.util.WslPathUtil;
 import com.intellij.openapi.diagnostic.Logger;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CancellationException;
@@ -19,6 +17,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Node.js detector.
@@ -245,30 +244,21 @@ public class NodeDetector {
             String methodDesc = "Windows where 命令";
 
             LOG.info("  尝试方法: " + methodDesc);
-            Process process = pb.start();
+            ProcessLineResult result = executeAndCaptureFirstLine(
+                    pb, 5, TimeUnit.SECONDS, methodDesc);
+            if (result.isSuccess() && result.firstLine() != null && !result.firstLine().isEmpty()) {
+                String path = result.firstLine().trim();
+                triedPaths.add(path);
 
-            try (BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
-                String path = reader.readLine();
-                if (path != null && !path.isEmpty()) {
-                    path = path.trim();
-                    triedPaths.add(path);
-
-                    String version = verifyNodePath(path);
-                    if (version != null) {
-                        LOG.info("✓ 通过 " + methodDesc + " 找到 Node.js: " + path + " (" + version + ")");
-                        return NodeDetectionResult.success(
-                                path, version,
-                                NodeDetectionResult.DetectionMethod.WHERE_COMMAND,
-                                triedPaths
-                        );
-                    }
+                String version = verifyNodePath(path);
+                if (version != null) {
+                    LOG.info("✓ 通过 " + methodDesc + " 找到 Node.js: " + path + " (" + version + ")");
+                    return NodeDetectionResult.success(
+                            path, version,
+                            NodeDetectionResult.DetectionMethod.WHERE_COMMAND,
+                            triedPaths
+                    );
                 }
-            }
-
-            boolean finished = process.waitFor(5, TimeUnit.SECONDS);
-            if (!finished) {
-                process.destroyForcibly();
             }
         } catch (Exception e) {
             LOG.debug("  Windows where 命令查找失败: " + e.getMessage());
@@ -505,23 +495,10 @@ public class NodeDetector {
 
         try {
             ProcessBuilder pb = new ProcessBuilder("node", "--version");
-            Process process = pb.start();
-
-            String version = null;
-            try (BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
-                version = reader.readLine();
-            }
-
-            boolean finished = process.waitFor(5, TimeUnit.SECONDS);
-            if (!finished) {
-                process.destroyForcibly();
-                return null;
-            }
-
-            int exitCode = process.exitValue();
-            if (exitCode == 0 && version != null) {
-                version = version.trim();
+            ProcessLineResult result = executeAndCaptureFirstLine(
+                    pb, 5, TimeUnit.SECONDS, "node --version fallback");
+            if (result.isSuccess() && result.firstLine() != null) {
+                String version = result.firstLine().trim();
                 LOG.info("✓ 直接调用 node 成功 (" + version + ")");
                 return NodeDetectionResult.success("node", version,
                         NodeDetectionResult.DetectionMethod.FALLBACK, triedPaths);
@@ -637,28 +614,89 @@ public class NodeDetector {
             } else {
                 pb = new ProcessBuilder(path, "--version");
             }
-            Process process = pb.start();
-
-            String version = null;
-            try (BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
-                version = reader.readLine();
-            }
-
-            boolean finished = process.waitFor(5, TimeUnit.SECONDS);
-            if (!finished) {
-                process.destroyForcibly();
-                return null;
-            }
-
-            int exitCode = process.exitValue();
-            if (exitCode == 0 && version != null) {
-                return version.trim();
+            ProcessLineResult result = executeAndCaptureFirstLine(
+                    pb, 5, TimeUnit.SECONDS, "node version verification");
+            if (result.isSuccess() && result.firstLine() != null) {
+                return result.firstLine().trim();
             }
         } catch (Exception e) {
             LOG.debug("    验证失败 [" + path + "]: " + e.getMessage());
         }
         return null;
+    }
+
+    private ProcessLineResult executeAndCaptureFirstLine(
+            ProcessBuilder processBuilder,
+            long timeout,
+            TimeUnit unit,
+            String description
+    ) {
+        Process process = null;
+        ProcessOutputDrainer drainer = null;
+        AtomicReference<String> firstLine = new AtomicReference<>();
+        try {
+            processBuilder.redirectErrorStream(true);
+            process = processBuilder.start();
+            drainer = ProcessOutputDrainer.start(
+                    process,
+                    line -> firstLine.compareAndSet(null, line)
+            );
+
+            if (!process.waitFor(timeout, unit)) {
+                LOG.debug("[NodeDetector] " + description + " timed out");
+                process.destroyForcibly();
+                drainer.cancel();
+                return ProcessLineResult.failure();
+            }
+
+            if (!drainer.await(2, TimeUnit.SECONDS)) {
+                LOG.debug("[NodeDetector] " + description + " output drain timed out");
+                drainer.cancel();
+            }
+            return ProcessLineResult.completed(process.exitValue(), firstLine.get());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            LOG.debug("[NodeDetector] " + description + " was interrupted");
+            return ProcessLineResult.failure();
+        } catch (Exception e) {
+            LOG.debug("[NodeDetector] " + description + " failed: " + e.getMessage());
+            return ProcessLineResult.failure();
+        } finally {
+            if (process != null && process.isAlive()) {
+                process.destroyForcibly();
+            }
+            if (drainer != null) {
+                drainer.cancel();
+            }
+        }
+    }
+
+    private static final class ProcessLineResult {
+        private final int exitCode;
+        private final String firstLine;
+        private final boolean completed;
+
+        private ProcessLineResult(int exitCode, String firstLine, boolean completed) {
+            this.exitCode = exitCode;
+            this.firstLine = firstLine;
+            this.completed = completed;
+        }
+
+        private static ProcessLineResult completed(int exitCode, String firstLine) {
+            return new ProcessLineResult(exitCode, firstLine, true);
+        }
+
+        private static ProcessLineResult failure() {
+            return new ProcessLineResult(-1, null, false);
+        }
+
+        private boolean isSuccess() {
+            return completed && exitCode == 0;
+        }
+
+        private String firstLine() {
+            return firstLine;
+        }
     }
 
     /**

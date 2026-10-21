@@ -1,11 +1,9 @@
 package com.github.claudecodegui.dependency;
 
 import com.github.claudecodegui.util.PlatformUtils;
+import com.github.claudecodegui.util.ProcessOutputDrainer;
 import com.intellij.openapi.diagnostic.Logger;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -19,6 +17,7 @@ import java.util.regex.Pattern;
  */
 public class NpmPermissionHelper {
     private static final Logger LOG = Logger.getInstance(NpmPermissionHelper.class);
+    private static final int OUTPUT_DRAIN_TIMEOUT_SECONDS = 2;
 
     // Permission error keywords
     private static final Pattern PERMISSION_ERROR_PATTERN = Pattern.compile(
@@ -100,32 +99,18 @@ public class NpmPermissionHelper {
             LOG.info("[NpmPermissionHelper] Attempting to clean npm cache using: npm cache clean --force");
 
             ProcessBuilder pb = new ProcessBuilder(npmPath, "cache", "clean", "--force");
-            Process process = pb.start();
-
-            // Read output (may contain warning messages)
-            StringBuilder output = new StringBuilder();
-            try (BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    output.append(line).append("\n");
-                }
-            }
-
-            boolean finished = process.waitFor(60, TimeUnit.SECONDS);
-            if (!finished) {
-                process.destroyForcibly();
+            ProcessExecutionResult result = execute(pb, 60, TimeUnit.SECONDS, "npm cache clean");
+            if (result.hasTimedOut()) {
                 LOG.warn("[NpmPermissionHelper] npm cache clean timed out");
                 return false;
             }
 
-            int exitCode = process.exitValue();
-            if (exitCode == 0) {
+            if (result.exitCode() == 0) {
                 LOG.info("[NpmPermissionHelper] npm cache cleaned successfully");
                 return true;
             } else {
-                LOG.warn("[NpmPermissionHelper] npm cache clean failed with exit code: " + exitCode);
-                LOG.debug("[NpmPermissionHelper] Output: " + output);
+                LOG.warn("[NpmPermissionHelper] npm cache clean failed with exit code: " + result.exitCode());
+                LOG.debug("[NpmPermissionHelper] Output: " + result.output());
                 return false;
             }
         } catch (Exception e) {
@@ -152,21 +137,11 @@ public class NpmPermissionHelper {
             if (PlatformUtils.isWindows()) {
                 // Windows: use rmdir /s /q
                 ProcessBuilder pb = new ProcessBuilder("cmd", "/c", "rmdir", "/s", "/q", cacheDir.toString());
-                Process process = pb.start();
-                boolean finished = process.waitFor(30, TimeUnit.SECONDS);
-                if (!finished) {
-                    process.destroyForcibly();
-                }
-                return process.exitValue() == 0;
+                return execute(pb, 30, TimeUnit.SECONDS, "npm cache directory deletion").exitCode() == 0;
             } else {
                 // Unix: use rm -rf
                 ProcessBuilder pb = new ProcessBuilder("rm", "-rf", cacheDir.toString());
-                Process process = pb.start();
-                boolean finished = process.waitFor(30, TimeUnit.SECONDS);
-                if (!finished) {
-                    process.destroyForcibly();
-                }
-                return process.exitValue() == 0;
+                return execute(pb, 30, TimeUnit.SECONDS, "npm cache directory deletion").exitCode() == 0;
             }
         } catch (Exception e) {
             LOG.error("[NpmPermissionHelper] Failed to force delete cache: " + e.getMessage(), e);
@@ -196,24 +171,101 @@ public class NpmPermissionHelper {
 
             // Use sudo chown -R
             ProcessBuilder pb = new ProcessBuilder("sudo", "chown", "-R", currentUser, cacheDir.toString());
-            Process process = pb.start();
+            ProcessExecutionResult result = execute(pb, 30, TimeUnit.SECONDS, "npm cache ownership fix");
 
-            boolean finished = process.waitFor(30, TimeUnit.SECONDS);
-            if (!finished) {
-                process.destroyForcibly();
-                return false;
-            }
-
-            if (process.exitValue() == 0) {
+            if (result.exitCode() == 0) {
                 LOG.info("[NpmPermissionHelper] Ownership fixed successfully");
                 return true;
             } else {
-                LOG.warn("[NpmPermissionHelper] Failed to fix ownership (exit code: " + process.exitValue() + ")");
+                LOG.warn("[NpmPermissionHelper] Failed to fix ownership (exit code: " + result.exitCode() + ")");
                 return false;
             }
         } catch (Exception e) {
             LOG.error("[NpmPermissionHelper] Failed to fix cache ownership: " + e.getMessage(), e);
             return false;
+        }
+    }
+
+    private static ProcessExecutionResult execute(
+            ProcessBuilder processBuilder,
+            long timeout,
+            TimeUnit unit,
+            String operation
+    ) {
+        Process process = null;
+        ProcessOutputDrainer drainer = null;
+        StringBuilder output = new StringBuilder();
+        try {
+            processBuilder.redirectErrorStream(true);
+            process = processBuilder.start();
+            drainer = ProcessOutputDrainer.start(
+                    process,
+                    line -> output.append(line).append('\n')
+            );
+
+            if (!process.waitFor(timeout, unit)) {
+                process.destroyForcibly();
+                drainer.cancel();
+                return ProcessExecutionResult.timedOut();
+            }
+
+            if (!drainer.await(OUTPUT_DRAIN_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+                LOG.debug("[NpmPermissionHelper] Output drain timed out for: " + operation);
+                drainer.cancel();
+            }
+            return ProcessExecutionResult.completed(process.exitValue(), output.toString());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            LOG.warn("[NpmPermissionHelper] Interrupted while running: " + operation);
+            return ProcessExecutionResult.failed();
+        } catch (Exception e) {
+            LOG.debug("[NpmPermissionHelper] Failed to run " + operation + ": " + e.getMessage());
+            return ProcessExecutionResult.failed();
+        } finally {
+            if (process != null && process.isAlive()) {
+                process.destroyForcibly();
+            }
+            if (drainer != null) {
+                drainer.cancel();
+            }
+        }
+    }
+
+    private static final class ProcessExecutionResult {
+        private static final int FAILED_EXIT_CODE = -1;
+
+        private final int exitCode;
+        private final String output;
+        private final boolean timedOut;
+
+        private ProcessExecutionResult(int exitCode, String output, boolean timedOut) {
+            this.exitCode = exitCode;
+            this.output = output;
+            this.timedOut = timedOut;
+        }
+
+        private static ProcessExecutionResult completed(int exitCode, String output) {
+            return new ProcessExecutionResult(exitCode, output, false);
+        }
+
+        private static ProcessExecutionResult timedOut() {
+            return new ProcessExecutionResult(FAILED_EXIT_CODE, "", true);
+        }
+
+        private static ProcessExecutionResult failed() {
+            return new ProcessExecutionResult(FAILED_EXIT_CODE, "", false);
+        }
+
+        private int exitCode() {
+            return exitCode;
+        }
+
+        private String output() {
+            return output;
+        }
+
+        private boolean hasTimedOut() {
+            return timedOut;
         }
     }
 

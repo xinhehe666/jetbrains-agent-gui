@@ -461,7 +461,12 @@ public class SessionIndexManager {
     }
 
     private static String normalizeRelativePath(String path) {
-        return path.replace('\\', '/').toLowerCase(Locale.ROOT);
+        String normalized = path.replace('\\', '/');
+        return isWindowsPathCaseInsensitive() ? normalized.toLowerCase(Locale.ROOT) : normalized;
+    }
+
+    private static boolean isWindowsPathCaseInsensitive() {
+        return System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("win");
     }
 
     private static boolean isClaudeSessionFile(String relativePath) {
@@ -474,30 +479,73 @@ public class SessionIndexManager {
      * Determines the update type for Codex (recursive directory scan).
      */
     public UpdateType getUpdateTypeRecursive(ProjectIndex projectIndex, Path sessionsDir) {
-        if (projectIndex == null || projectIndex.sessions.isEmpty()) {
+        if (projectIndex == null || projectIndex.sessions == null || projectIndex.sessions.isEmpty()) {
+            return UpdateType.FULL;
+        }
+        if (sessionsDir == null || !Files.isDirectory(sessionsDir)) {
             return UpdateType.FULL;
         }
 
         try {
-            // Count files first (recursive walk for nested year/month/day structure)
-            long currentFileCount;
+            Map<String, BasicFileAttributes> currentFiles = new HashMap<>();
             try (Stream<Path> paths = Files.walk(sessionsDir)) {
-                currentFileCount = paths
+                paths
                         .filter(Files::isRegularFile)
                         .filter(p -> p.toString().endsWith(".jsonl"))
-                        .count();
+                        .forEach(path -> {
+                            try {
+                                currentFiles.put(
+                                        normalizeRelativePath(sessionsDir.relativize(path).toString()),
+                                        Files.readAttributes(path, BasicFileAttributes.class)
+                                );
+                            } catch (IOException e) {
+                                throw new UncheckedIOException(e);
+                            }
+                        });
             }
 
-            if (currentFileCount == projectIndex.fileCount) {
-                return UpdateType.NONE;
-            } else if (currentFileCount > projectIndex.fileCount) {
-                LOG.info("[SessionIndexManager] Codex file count increased: " + projectIndex.fileCount + " -> " + currentFileCount + ", incremental update");
-                return UpdateType.INCREMENTAL;
-            } else {
-                LOG.info("[SessionIndexManager] Codex file count decreased: " + projectIndex.fileCount + " -> " + currentFileCount + ", full update");
+            if (currentFiles.size() < projectIndex.fileCount) {
+                LOG.info("[SessionIndexManager] Codex file count decreased: " + projectIndex.fileCount
+                        + " -> " + currentFiles.size() + ", full update");
                 return UpdateType.FULL;
             }
+
+            Set<String> indexedPaths = new HashSet<>();
+            boolean hasChangedFile = false;
+            for (SessionIndexEntry entry : projectIndex.sessions) {
+                if (entry == null || entry.sessionId == null || entry.sessionId.isEmpty()) {
+                    return UpdateType.FULL;
+                }
+                String indexedPath = entry.fileRelativePath;
+                if (indexedPath == null || indexedPath.isEmpty()) {
+                    indexedPath = entry.sessionId + ".jsonl";
+                }
+                indexedPath = normalizeRelativePath(indexedPath);
+
+                BasicFileAttributes currentAttributes = currentFiles.get(indexedPath);
+                if (currentAttributes == null) {
+                    return UpdateType.FULL;
+                }
+                if (entry.fileLastModified <= 0
+                        || entry.fileLastModified != currentAttributes.lastModifiedTime().toMillis()
+                        || entry.fileSize <= 0
+                        || entry.fileSize != currentAttributes.size()) {
+                    hasChangedFile = true;
+                }
+            }
+
+            // Codex intentionally skips subagent, empty, and invalid JSONL files, so the
+            // indexed path set is allowed to be a subset of the files on disk.
+            if (currentFiles.size() > projectIndex.fileCount || hasChangedFile) {
+                LOG.info("[SessionIndexManager] Codex files changed: " + projectIndex.fileCount
+                        + " -> " + currentFiles.size() + ", incremental update");
+                return UpdateType.INCREMENTAL;
+            }
+            return UpdateType.NONE;
         } catch (IOException e) {
+            LOG.warn("[SessionIndexManager] Failed to check Codex update type: " + e.getMessage());
+            return UpdateType.FULL;
+        } catch (UncheckedIOException e) {
             LOG.warn("[SessionIndexManager] Failed to check Codex update type: " + e.getMessage());
             return UpdateType.FULL;
         }

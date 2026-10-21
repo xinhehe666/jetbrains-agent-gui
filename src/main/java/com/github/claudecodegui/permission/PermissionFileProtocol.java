@@ -8,6 +8,8 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.List;
 import java.util.function.BiConsumer;
 
 /**
@@ -32,6 +34,37 @@ class PermissionFileProtocol {
     private final String sessionId;
     private final Gson gson;
     private final BiConsumer<String, String> debugLog;
+
+    /**
+     * One directory listing shared by the watcher's three request groups.
+     */
+    static final class RequestFilesSnapshot {
+        private final File[] permissionRequests;
+        private final File[] askUserQuestionRequests;
+        private final File[] planApprovalRequests;
+
+        private RequestFilesSnapshot(
+                File[] permissionRequests,
+                File[] askUserQuestionRequests,
+                File[] planApprovalRequests
+        ) {
+            this.permissionRequests = permissionRequests;
+            this.askUserQuestionRequests = askUserQuestionRequests;
+            this.planApprovalRequests = planApprovalRequests;
+        }
+
+        File[] getPermissionRequests() {
+            return permissionRequests.clone();
+        }
+
+        File[] getAskUserQuestionRequests() {
+            return askUserQuestionRequests.clone();
+        }
+
+        File[] getPlanApprovalRequests() {
+            return planApprovalRequests.clone();
+        }
+    }
 
     PermissionFileProtocol(Path permissionDir, String sessionId, Gson gson, BiConsumer<String, String> debugLog) {
         this.permissionDir = permissionDir;
@@ -60,21 +93,38 @@ class PermissionFileProtocol {
     }
 
     File[] listPermissionRequestFiles() {
-        return listFiles((dir, name) -> name.startsWith("request-" + sessionId + "-") && name.endsWith(".json"));
+        return listRequestFilesSnapshot().getPermissionRequests();
     }
 
     File[] listAskUserQuestionRequestFiles() {
-        return listFiles((dir, name) ->
-                name.startsWith("ask-user-question-" + sessionId + "-")
-                        && !name.startsWith("ask-user-question-response-")
-                        && name.endsWith(".json"));
+        return listRequestFilesSnapshot().getAskUserQuestionRequests();
     }
 
     File[] listPlanApprovalRequestFiles() {
-        return listFiles((dir, name) ->
+        return listRequestFilesSnapshot().getPlanApprovalRequests();
+    }
+
+    RequestFilesSnapshot listRequestFilesSnapshot() {
+        File[] files = listFiles((dir, name) -> name.endsWith(".json"));
+        List<File> permissionRequests = filter(files, name ->
+                name.startsWith("request-" + sessionId + "-"));
+        List<File> askUserQuestionRequests = filter(files, name ->
+                name.startsWith("ask-user-question-" + sessionId + "-")
+                        && !name.startsWith("ask-user-question-response-"));
+        List<File> planApprovalRequests = filter(files, name ->
                 name.startsWith("plan-approval-" + sessionId + "-")
-                        && !name.startsWith("plan-approval-response-")
-                        && name.endsWith(".json"));
+                        && !name.startsWith("plan-approval-response-"));
+        return new RequestFilesSnapshot(
+                permissionRequests.toArray(File[]::new),
+                askUserQuestionRequests.toArray(File[]::new),
+                planApprovalRequests.toArray(File[]::new)
+        );
+    }
+
+    private static List<File> filter(File[] files, java.util.function.Predicate<String> predicate) {
+        return Arrays.stream(files)
+                .filter(file -> predicate.test(file.getName()))
+                .toList();
     }
 
     /**

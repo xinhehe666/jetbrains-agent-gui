@@ -6,10 +6,8 @@ import com.github.claudecodegui.util.PlatformUtils;
 import com.github.claudecodegui.util.ShellExecutor;
 import com.intellij.openapi.diagnostic.Logger;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -750,21 +748,15 @@ public class EnvironmentConfigurator {
             command.add("/c");
             command.add("echo %" + envName + "%");
 
-            ProcessBuilder pb = new ProcessBuilder(command);
-            pb.redirectErrorStream(true);
-
-            Process process = pb.start();
-            try (BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
-                String line = reader.readLine();
-                process.waitFor();
-
-                // Windows returns "%VARNAME%" if not set
-                if (line != null && !line.trim().isEmpty() &&
-                            !line.trim().equals("%" + envName + "%")) {
-                    LOG.debug("[Codex] Env var found via Windows shell: " + envName);
-                    return line.trim();
-                }
+            ShellExecutor.ExecutionResult result = ShellExecutor.executeAndGetLast(
+                    command,
+                    line -> !line.isEmpty() && !line.equals("%" + envName + "%"),
+                    "[Codex] getEnvFromWindowsShell(" + envName + ")",
+                    ShellExecutor.DEFAULT_TIMEOUT_SECONDS
+            );
+            if (result.isSuccess() && result.getOutput() != null) {
+                LOG.debug("[Codex] Env var found via Windows shell: " + envName);
+                return result.getOutput();
             }
         } catch (Exception e) {
             LOG.debug("[Codex] Failed to get env from Windows shell: " + e.getMessage());

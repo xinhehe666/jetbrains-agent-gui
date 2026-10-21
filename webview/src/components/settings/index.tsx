@@ -72,7 +72,6 @@ const SettingsView = ({
   const { t } = useTranslation();
   const isCodexMode = currentProvider === 'codex';
   // Codex mode: align with Claude capabilities for settings tabs.
-  // Keep the Codex pet settings available.
   const disabledTabs = useMemo<SettingsTab[]>(
     () => [],
     []
@@ -172,9 +171,9 @@ const SettingsView = ({
           isCollapsed={pageState.isCollapsed}
           onToggleCollapse={pageState.toggleManualCollapse}
           disabledTabs={disabledTabs}
-          onDisabledTabClick={(tab) =>
+          onDisabledTabClick={() =>
             pageState.addToast(
-              t(tab === 'pet' ? 'settings.pet.temporarilyUnavailable' : 'settings.codexFeatureUnavailable'),
+              t('settings.codexFeatureUnavailable'),
               'warning'
             )
           }

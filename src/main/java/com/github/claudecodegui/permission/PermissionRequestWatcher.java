@@ -90,9 +90,11 @@ class PermissionRequestWatcher {
                     dir.mkdirs();
                 }
 
-                File[] requestFiles = fileProtocol.listPermissionRequestFiles();
-                File[] askUserQuestionFiles = fileProtocol.listAskUserQuestionRequestFiles();
-                File[] planApprovalFiles = fileProtocol.listPlanApprovalRequestFiles();
+                PermissionFileProtocol.RequestFilesSnapshot snapshot =
+                        fileProtocol.listRequestFilesSnapshot();
+                File[] requestFiles = snapshot.getPermissionRequests();
+                File[] askUserQuestionFiles = snapshot.getAskUserQuestionRequests();
+                File[] planApprovalFiles = snapshot.getPlanApprovalRequests();
 
                 if (pollCount % 100 == 0) {
                     debugLog.accept("POLL_STATUS", String.format(

@@ -1,6 +1,5 @@
 package com.github.claudecodegui.provider.codex;
 
-import com.github.claudecodegui.bridge.NodeDetector;
 import com.github.claudecodegui.cache.SessionIndexManager;
 import com.github.claudecodegui.settings.CodemossSettingsService;
 import com.github.claudecodegui.util.PathUtils;
@@ -11,7 +10,6 @@ import com.intellij.openapi.diagnostic.Logger;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -36,7 +34,7 @@ public class CodexHistoryReader {
     private final ThreadLocal<Consumer<ByteBuffer>> sourceBytesObserver = new ThreadLocal<>();
 
     private static Path defaultSessionsDir() {
-        return Paths.get(NodeDetector.resolveHomeForFileOps(), ".codex", "sessions");
+        return CodexHomeResolver.resolveSessionsDir();
     }
 
     public CodexHistoryReader() {

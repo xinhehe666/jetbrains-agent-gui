@@ -84,34 +84,36 @@
 
 ## 本地开发调试
 
-### 1.安装前端依赖
+### 1. 环境要求
+
+- JDK 17（插件源码和 Gradle Java Toolchain 均以 Java 17 为目标，不要求 JDK 21）
+- Node.js 20+ 与 npm
+
+可先确认当前环境：
 
 ```bash
-cd webview
-npm install
+java -version
+node --version
+npm --version
 ```
 
-### 2.安装ai-bridge依赖
+### 2. 调试插件
 
-```bash
-cd ai-bridge
-npm install
-```
-
-### 3.调试插件
-
-在 IDEA 中运行：
 ```bash
 ./gradlew clean runIde
 ```
 
-### 4.构建插件
+Gradle 会根据 `package-lock.json` 自动执行 `npm ci`，无需提前进入 `webview` 或 `ai-bridge` 手动安装依赖。
 
-```sh
+### 3. 构建插件
+
+```bash
 ./gradlew clean buildPlugin
 
 # 生成的插件包会在 build/distributions/ 目录下（包体大约40MB）
 ```
+
+如果下载 Maven 依赖时遇到 TLS、超时或连接重置，这通常是仓库网络问题，不是 Java 编译错误。项目已配置 Maven Central 的备用镜像，重试构建即可复用已经下载的依赖。
 
 ---
 

@@ -4,16 +4,15 @@ import com.github.claudecodegui.bridge.EnvironmentConfigurator;
 import com.github.claudecodegui.bridge.NodeDetector;
 import com.github.claudecodegui.model.NodeDetectionResult;
 import com.github.claudecodegui.util.PlatformUtils;
+import com.github.claudecodegui.util.ProcessOutputDrainer;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.intellij.openapi.diagnostic.Logger;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
@@ -27,9 +26,8 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * SDK dependency manager.
@@ -41,6 +39,10 @@ public class DependencyManager {
     private static final String DEPS_DIR_NAME = "dependencies";
     private static final String MANIFEST_FILE = "manifest.json";
     private static final String INSTALLED_MARKER = ".installed";
+    private static final int OUTPUT_DRAIN_TIMEOUT_SECONDS = 2;
+    private static final int VERSION_QUERY_TIMEOUT_SECONDS = 30;
+    private static final int WSL_NPM_QUERY_TIMEOUT_SECONDS = 5;
+    private static final int INSTALL_TIMEOUT_MINUTES = 3;
 
     private final Gson gson;
     private final NodeDetector nodeDetector;
@@ -221,21 +223,19 @@ public class DependencyManager {
 
             Process process = pb.start();
             StringBuilder output = new StringBuilder();
+            ProcessOutputDrainer drainer = ProcessOutputDrainer.start(
+                    process,
+                    line -> output.append(line.trim())
+            );
 
-            try (BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    output.append(line.trim());
-                }
-            }
-
-            boolean finished = process.waitFor(30, TimeUnit.SECONDS);
+            boolean finished = process.waitFor(VERSION_QUERY_TIMEOUT_SECONDS, TimeUnit.SECONDS);
             if (!finished) {
                 process.destroyForcibly();
+                awaitDrainer(drainer);
                 return null;
             }
 
+            awaitDrainer(drainer);
             if (process.exitValue() == 0) {
                 return output.toString().trim();
             }
@@ -267,26 +267,24 @@ public class DependencyManager {
 
             Process process = pb.start();
             StringBuilder output = new StringBuilder();
+            ProcessOutputDrainer drainer = ProcessOutputDrainer.start(
+                    process,
+                    output::append
+            );
 
-            try (BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    output.append(line);
-                }
-            }
-
-            boolean finished = process.waitFor(30, TimeUnit.SECONDS);
+            boolean finished = process.waitFor(VERSION_QUERY_TIMEOUT_SECONDS, TimeUnit.SECONDS);
             if (!finished) {
                 process.destroyForcibly();
+                awaitDrainer(drainer);
                 return Collections.emptyList();
             }
 
+            awaitDrainer(drainer);
             if (process.exitValue() != 0) {
                 return Collections.emptyList();
             }
 
-            return parseVersionList(output.toString());
+            return DependencyVersionSupport.parseVersionList(output.toString());
         } catch (Exception e) {
             LOG.warn("[DependencyManager] Failed to get available versions: " + e.getMessage());
             return Collections.emptyList();
@@ -324,7 +322,7 @@ public class DependencyManager {
             return UpdateInfo.error(sdkId, sdk.getDisplayName(), "Cannot fetch latest version");
         }
 
-        if (compareVersions(currentVersion, latestVersion) < 0) {
+        if (DependencyVersionSupport.compareVersions(currentVersion, latestVersion) < 0) {
             return UpdateInfo.updateAvailable(sdkId, sdk.getDisplayName(), currentVersion, latestVersion);
         }
 
@@ -415,8 +413,10 @@ public class DependencyManager {
             }
 
             // 5. Run npm install (with retry mechanism)
-            String normalizedRequestedVersion = normalizeRequestedVersion(requestedVersion);
-            List<String> packages = buildPackageSpecs(sdk, normalizedRequestedVersion);
+            String normalizedRequestedVersion =
+                    DependencyVersionSupport.normalizeRequestedVersion(requestedVersion);
+            List<String> packages =
+                    DependencyVersionSupport.buildPackageSpecs(sdk, normalizedRequestedVersion);
             int maxRetries = 2;
             InstallResult lastResult = null;
 
@@ -449,25 +449,25 @@ public class DependencyManager {
 
                 Process process = pb.start();
 
-                // Read output in real time and collect logs
                 StringBuilder installLogs = new StringBuilder();
-                try (BufferedReader reader = new BufferedReader(
-                        new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        log.accept(line);
-                        installLogs.append(line).append("\n");
-                    }
-                }
+                ProcessOutputDrainer drainer = ProcessOutputDrainer.start(
+                        process,
+                        line -> {
+                            log.accept(line);
+                            installLogs.append(line).append("\n");
+                        }
+                );
 
-                boolean finished = process.waitFor(3, TimeUnit.MINUTES);
+                boolean finished = process.waitFor(INSTALL_TIMEOUT_MINUTES, TimeUnit.MINUTES);
                 if (!finished) {
                     process.destroyForcibly();
+                    awaitDrainer(drainer);
                     lastResult = InstallResult.failure(sdkId,
                             "Installation timed out (3 minutes)", logs.toString());
                     continue; // Retry
                 }
 
+                awaitDrainer(drainer);
                 int exitCode = process.exitValue();
                 if (exitCode == 0) {
                     // Installation succeeded, proceed to next steps
@@ -611,7 +611,10 @@ public class DependencyManager {
                 String minRequired = sdk.getMinRequiredVersion();
                 if (minRequired != null && version != null && !version.isEmpty()) {
                     status.addProperty("minimumVersion", minRequired);
-                    status.addProperty("meetsMinimumVersion", compareVersions(version, minRequired) >= 0);
+                    status.addProperty(
+                            "meetsMinimumVersion",
+                            DependencyVersionSupport.compareVersions(version, minRequired) >= 0
+                    );
                 }
             }
 
@@ -753,26 +756,51 @@ public class DependencyManager {
      * Executes {@code wsl which npm} once and returns the trimmed first stdout line, or null on failure.
      */
     private static String queryWslWhichNpm() {
+        Process process = null;
+        ProcessOutputDrainer drainer = null;
         try {
             ProcessBuilder pb = new ProcessBuilder("wsl", "which", "npm");
             pb.redirectErrorStream(true);
-            Process process = pb.start();
-            String line;
-            try (BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
-                line = reader.readLine();
-            }
-            if (!process.waitFor(5, TimeUnit.SECONDS)) {
+            process = pb.start();
+            AtomicReference<String> firstLine = new AtomicReference<>();
+            drainer = ProcessOutputDrainer.start(
+                    process,
+                    line -> firstLine.compareAndSet(null, line.trim())
+            );
+            if (!process.waitFor(WSL_NPM_QUERY_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
                 process.destroyForcibly();
+                awaitDrainer(drainer);
                 return null;
             }
-            if (process.exitValue() == 0 && line != null && !line.trim().isEmpty()) {
-                return line.trim();
+            awaitDrainer(drainer);
+            String line = firstLine.get();
+            if (process.exitValue() == 0 && line != null && !line.isEmpty()) {
+                return line;
             }
         } catch (Exception e) {
             LOG.debug("[DependencyManager] `wsl which npm` failed: " + e.getMessage());
+        } finally {
+            if (process != null && process.isAlive()) {
+                process.destroyForcibly();
+            }
+            if (drainer != null) {
+                drainer.cancel();
+            }
         }
         return null;
+    }
+
+    private static void awaitDrainer(ProcessOutputDrainer drainer) {
+        try {
+            if (!drainer.await(OUTPUT_DRAIN_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+                LOG.debug("[DependencyManager] Output drain timed out");
+                drainer.cancel();
+                drainer.await(1, TimeUnit.SECONDS);
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            drainer.cancel();
+        }
     }
 
     /**
@@ -877,17 +905,18 @@ public class DependencyManager {
             return failedPaths;
         }
 
-        // Collect all paths that failed to delete instead of silently ignoring them
-        Files.walk(dir)
-                .sorted((a, b) -> b.compareTo(a)) // Reverse sort to delete children first
-                .forEach(path -> {
-                    try {
-                        Files.delete(path);
-                    } catch (IOException e) {
-                        LOG.warn("[DependencyManager] Failed to delete: " + path + " - " + e.getMessage());
-                        failedPaths.add(path);
-                    }
-                });
+        // Collect all paths that failed to delete instead of silently ignoring them.
+        try (java.util.stream.Stream<Path> paths = Files.walk(dir)) {
+            paths.sorted((a, b) -> b.compareTo(a)) // Reverse sort to delete children first
+                    .forEach(path -> {
+                        try {
+                            Files.delete(path);
+                        } catch (IOException e) {
+                            LOG.warn("[DependencyManager] Failed to delete: " + path + " - " + e.getMessage());
+                            failedPaths.add(path);
+                        }
+                    });
+        }
 
         if (!failedPaths.isEmpty()) {
             LOG.warn("[DependencyManager] " + failedPaths.size() + " files/directories failed to delete");
@@ -896,131 +925,4 @@ public class DependencyManager {
         return failedPaths;
     }
 
-    /**
-     * Compares two version strings.
-     *
-     * @return negative if v1 < v2, 0 if equal, positive if v1 > v2
-     */
-    static int compareVersions(String v1, String v2) {
-        if (v1 == null || v2 == null) {
-            return 0;
-        }
-
-        // Strip the leading 'v' prefix
-        v1 = v1.startsWith("v") ? v1.substring(1) : v1;
-        v2 = v2.startsWith("v") ? v2.substring(1) : v2;
-
-        String[] parts1 = v1.split("\\.");
-        String[] parts2 = v2.split("\\.");
-
-        int maxLen = Math.max(parts1.length, parts2.length);
-        for (int i = 0; i < maxLen; i++) {
-            int num1 = i < parts1.length ? parseVersionPart(parts1[i]) : 0;
-            int num2 = i < parts2.length ? parseVersionPart(parts2[i]) : 0;
-
-            if (num1 != num2) {
-                return num1 - num2;
-            }
-        }
-
-        return 0;
-    }
-
-    /**
-     * Semver-like pattern: major.minor.patch with optional pre-release suffix.
-     * Only allows digits, dots, hyphens, and alphanumeric pre-release tags.
-     * Rejects anything that could be used for npm install argument injection.
-     */
-    private static final java.util.regex.Pattern SEMVER_PATTERN =
-            java.util.regex.Pattern.compile("^\\d+\\.\\d+\\.\\d+([-.][a-zA-Z0-9.]+)*$");
-
-    static String normalizeRequestedVersion(String version) {
-        if (version == null) {
-            return null;
-        }
-
-        String trimmed = version.trim();
-        if (trimmed.isEmpty()) {
-            return null;
-        }
-
-        if (trimmed.startsWith("v") || trimmed.startsWith("V")) {
-            trimmed = trimmed.substring(1);
-        }
-
-        if (!SEMVER_PATTERN.matcher(trimmed).matches()) {
-            LOG.warn("[DependencyManager] Rejected invalid version format: " + version);
-            return null;
-        }
-
-        return trimmed;
-    }
-
-    static List<String> buildPackageSpecs(SdkDefinition sdk, String requestedVersion) {
-        if (sdk == null) {
-            return Collections.emptyList();
-        }
-
-        List<String> packages = new ArrayList<>();
-        String normalizedRequestedVersion = normalizeRequestedVersion(requestedVersion);
-        String targetVersion = normalizedRequestedVersion != null ? normalizedRequestedVersion : sdk.getVersion();
-        packages.add(sdk.getNpmPackage() + "@" + targetVersion);
-        packages.addAll(sdk.getDependencies());
-        return packages;
-    }
-
-    static List<String> parseVersionList(String rawJson) {
-        List<String> versions = new ArrayList<>();
-
-        try {
-            com.google.gson.JsonElement element = JsonParser.parseString(rawJson);
-            if (!element.isJsonArray()) {
-                return versions;
-            }
-
-            // npm >= 9 wraps the version list in an extra array layer
-            // (`[["0.0.4", ..., "0.3.221"]]`), while older npm emits a flat array
-            // (`["0.0.4", ..., "0.3.221"]`). Unwrap leading array-of-array layers so
-            // both shapes reach the same primitive-version leaves; otherwise every
-            // element is itself an array, `isJsonPrimitive()` is false, and the whole
-            // list is silently dropped (causing the misleading "remote versions
-            // unavailable" fallback).
-            com.google.gson.JsonArray array = element.getAsJsonArray();
-            while (!array.isEmpty()
-                    && array.get(0).isJsonArray()
-                    && array.size() == 1) {
-                array = array.get(0).getAsJsonArray();
-            }
-
-            for (com.google.gson.JsonElement item : array) {
-                if (!item.isJsonPrimitive()) {
-                    continue;
-                }
-
-                String version = normalizeRequestedVersion(item.getAsString());
-                if (version == null || version.contains("-")) {
-                    continue;
-                }
-                versions.add(version);
-            }
-        } catch (Exception e) {
-            LOG.warn("[DependencyManager] Failed to parse version list: " + e.getMessage());
-        }
-
-        versions.sort((left, right) -> compareVersions(right, left));
-        return versions;
-    }
-
-    /**
-     * Parses a single segment of a version string.
-     */
-    private static int parseVersionPart(String part) {
-        // Strip non-numeric suffixes (e.g. -beta, -alpha)
-        Pattern pattern = Pattern.compile("^(\\d+)");
-        Matcher matcher = pattern.matcher(part);
-        if (matcher.find()) {
-            return Integer.parseInt(matcher.group(1));
-        }
-        return 0;
-    }
 }

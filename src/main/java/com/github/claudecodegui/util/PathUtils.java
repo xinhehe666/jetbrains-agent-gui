@@ -386,19 +386,19 @@ public class PathUtils {
         // Primary temp directory from PlatformUtils (handles TEMP/TMP/TMPDIR/java.io.tmpdir)
         String primaryTemp = PlatformUtils.getTempDirectory();
         if (!primaryTemp.isEmpty()) {
-            paths.add(normalizeToUnix(primaryTemp).toLowerCase());
+            paths.add(normalizeTempPath(primaryTemp));
         }
 
         // java.io.tmpdir as additional fallback
         String javaTmpDir = System.getProperty("java.io.tmpdir");
         if (javaTmpDir != null && !javaTmpDir.isEmpty()) {
-            paths.add(normalizeToUnix(javaTmpDir).toLowerCase());
+            paths.add(normalizeTempPath(javaTmpDir));
         }
 
         if (PlatformUtils.isWindows()) {
             String localAppData = PlatformUtils.getEnvIgnoreCase("LOCALAPPDATA");
             if (localAppData != null && !localAppData.isEmpty()) {
-                paths.add(normalizeToUnix(localAppData + "\\Temp").toLowerCase());
+                paths.add(normalizeTempPath(localAppData + "\\Temp"));
             }
         } else {
             paths.add("/tmp");
@@ -420,16 +420,30 @@ public class PathUtils {
             return false;
         }
 
-        String normalizedPath = normalizeToUnix(path).toLowerCase();
+        String normalizedPath = normalizeTempPath(path);
         List<String> tempPaths = getTempPaths();
 
         for (String tempPath : tempPaths) {
-            if (tempPath != null && normalizedPath.startsWith(tempPath)) {
+            if (tempPath != null && isSameOrChildPath(normalizedPath, tempPath)) {
                 return true;
             }
         }
 
         return false;
+    }
+
+    private static String normalizeTempPath(String path) {
+        String normalized = normalizeToUnix(path);
+        while (normalized.length() > 1 && normalized.endsWith("/")) {
+            normalized = normalized.substring(0, normalized.length() - 1);
+        }
+        return PlatformUtils.isWindows()
+                ? normalized.toLowerCase(java.util.Locale.ROOT)
+                : normalized;
+    }
+
+    private static boolean isSameOrChildPath(String path, String base) {
+        return path.equals(base) || path.startsWith(base + "/");
     }
 
     // ==================== Path Validation ====================

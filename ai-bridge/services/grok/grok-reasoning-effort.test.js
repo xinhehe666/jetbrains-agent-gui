@@ -76,6 +76,20 @@ const params = {
   authMethod: 'api_key', apiKey: 'test-key', runtimeSessionEpoch: 'reasoning-test',
 };
 
+test('preconnect does not mutate caller auth parameters', async (t) => {
+  mockTransport(t);
+  const output = [];
+  t.mock.method(console, 'log', (...args) => output.push(args.join(' ')));
+  const callerParams = { ...params, authMethod: 'oauth' };
+  const originalParams = { ...callerParams };
+  try {
+    await preconnectPersistent(callerParams);
+    assert.deepEqual(callerParams, originalParams);
+  } finally {
+    await shutdownPersistentRuntimes();
+  }
+});
+
 test('one-shot new and resumed sessions apply xhigh before the user prompt', async (t) => {
   const transport = mockTransport(t);
   const output = [];

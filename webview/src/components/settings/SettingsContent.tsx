@@ -14,7 +14,6 @@ import {
   AgentsPanel,
   PromptsPanel,
   SkillsPanel,
-  PetPanel,
   OtherPanel,
   CommunityPanel,
   type SettingsTabPanelProps,
@@ -40,7 +39,6 @@ const TAB_PANELS: Record<SettingsTab, ComponentType<SettingsTabPanelProps>> = {
   agents: AgentsPanel,
   prompts: PromptsPanel,
   skills: SkillsPanel,
-  pet: PetPanel,
   other: OtherPanel,
   community: CommunityPanel,
 };

@@ -10,8 +10,11 @@ import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -33,8 +36,8 @@ class CodexHistoryIndexService {
     /**
      * Dedicated thread pool for lite-read I/O to avoid starving the IDE's common ForkJoinPool.
      */
-    private static final ExecutorService LITE_READ_POOL =
-            Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+    private static final int LITE_READ_QUEUE_CAPACITY = 256;
+    private static final ExecutorService LITE_READ_POOL = createLiteReadPool();
 
     private final Path sessionsDir;
     private final CodexHistoryParser parser;
@@ -64,29 +67,29 @@ class CodexHistoryIndexService {
      * @return list of session info
      */
     List<CodexHistoryReader.SessionInfo> readAllSessionsWithPagination(int limit, int offset) throws IOException {
-        String cacheKey = "__all__";
+        String cacheKey = codexCacheKey();
 
         if (!Files.exists(sessionsDir) || !Files.isDirectory(sessionsDir)) {
             LOG.info("[CodexHistoryIndexService] Codex sessions directory not found: " + sessionsDir);
             return new ArrayList<>();
         }
 
-        // Check memory cache (only for non-paginated requests)
         SessionIndexCache cache = SessionIndexCache.getInstance();
-        if (limit == 0 && offset == 0) {
-            List<CodexHistoryReader.SessionInfo> cachedSessions = cache.getCodexSessions(cacheKey, sessionsDir);
-            if (cachedSessions != null) {
-                LOG.info("[CodexHistoryIndexService] Using memory cache for " + cacheKey + ", sessions: " + cachedSessions.size());
-                return cachedSessions;
-            }
-        }
-
         SessionIndexManager indexManager = this.indexManager;
         SessionIndexManager.SessionIndex index = indexManager.readCodexIndex();
         SessionIndexManager.ProjectIndex projectIndex = index.projects.get(cacheKey);
         SessionIndexManager.UpdateType updateType = indexManager.getUpdateTypeRecursive(projectIndex, sessionsDir);
 
         if (updateType == SessionIndexManager.UpdateType.NONE) {
+            // The on-disk index is the source of truth for freshness. Only reuse the
+            // memory cache after its file metadata has been checked.
+            if (limit == 0 && offset == 0) {
+                List<CodexHistoryReader.SessionInfo> cachedSessions = cache.getCodexSessions(cacheKey, sessionsDir);
+                if (cachedSessions != null) {
+                    LOG.info("[CodexHistoryIndexService] Using memory cache for " + cacheKey + ", sessions: " + cachedSessions.size());
+                    return cachedSessions;
+                }
+            }
             LOG.info("[CodexHistoryIndexService] Using file index for " + cacheKey + ", sessions: " + projectIndex.sessions.size());
             List<CodexHistoryReader.SessionInfo> restored = restoreSessionsFromIndex(projectIndex);
             List<CodexHistoryReader.SessionInfo> sessions = applySortAndLimit(restored, limit, offset);
@@ -139,7 +142,7 @@ class CodexHistoryIndexService {
      * Captures a session file's location and last-modified time, carried from scan
      * to index-update to avoid redundant stat calls.
      */
-    record FileMeta(Path path, long mtime) {
+    record FileMeta(Path path, long mtime, long size) {
     }
 
     /**
@@ -188,16 +191,20 @@ class CodexHistoryIndexService {
                             return;
                         }
                         long mtime = attrs.lastModifiedTime().toMillis();
+                        long size = attrs.size();
 
                         SessionIndexManager.SessionIndexEntry indexed = indexedByPath.get(relative);
                         if (indexed == null) {
                             newFiles.add(p);
-                        } else if (indexed.fileLastModified <= 0 || indexed.fileLastModified != mtime) {
+                        } else if (indexed.fileLastModified <= 0
+                                || indexed.fileLastModified != mtime
+                                || indexed.fileSize <= 0
+                                || indexed.fileSize != size) {
                             changedFiles.add(p);
                         } else {
                             restoredEntriesByPath.put(relative, indexed);
                             if (indexed.sessionId != null) {
-                                sessionFiles.put(indexed.sessionId, new FileMeta(p, mtime));
+                                sessionFiles.put(indexed.sessionId, new FileMeta(p, mtime, size));
                             }
                         }
                     });
@@ -212,17 +219,17 @@ class CodexHistoryIndexService {
         List<ReadResult> newSessions = batchReadLite(newFiles);
         for (ReadResult rr : refreshed) {
             sessions.add(rr.info);
-            sessionFiles.put(rr.info.sessionId, new FileMeta(rr.path, rr.mtime));
+            sessionFiles.put(rr.info.sessionId, new FileMeta(rr.path, rr.mtime, rr.size));
         }
         for (ReadResult rr : newSessions) {
             sessions.add(rr.info);
-            sessionFiles.put(rr.info.sessionId, new FileMeta(rr.path, rr.mtime));
+            sessionFiles.put(rr.info.sessionId, new FileMeta(rr.path, rr.mtime, rr.size));
         }
         LOG.info("[CodexHistoryIndexService] Incremental scan: " + refreshed.size() + " refreshed, "
                 + newSessions.size() + " new, " + restoredEntriesByPath.size() + " unchanged, "
                 + skipped.get() + " skipped");
 
-        return new ScanResult(deduplicateSessions(sessions), sessionFiles);
+        return new ScanResult(CodexHistoryDeduplicator.deduplicate(sessions), sessionFiles);
     }
 
     private CodexHistoryReader.SessionInfo restoreEntry(SessionIndexManager.SessionIndexEntry entry) {
@@ -333,7 +340,7 @@ class CodexHistoryIndexService {
                     continue;
                 }
                 sessions.add(rr.info);
-                sessionFiles.put(rr.info.sessionId, new FileMeta(rr.path, rr.mtime));
+                sessionFiles.put(rr.info.sessionId, new FileMeta(rr.path, rr.mtime, rr.size));
                 if (sessions.size() >= want) {
                     break;
                 }
@@ -342,7 +349,7 @@ class CodexHistoryIndexService {
             i = batchEnd;
         }
 
-        return deduplicateSessions(sessions);
+        return CodexHistoryDeduplicator.deduplicate(sessions);
     }
 
     /**
@@ -355,22 +362,12 @@ class CodexHistoryIndexService {
         List<CompletableFuture<ReadResult>> futures = new ArrayList<>();
 
         for (Path path : filePaths) {
-            futures.add(CompletableFuture.supplyAsync(() -> {
-                try {
-                    CodexSessionLiteReader.CodexLiteSessionInfo liteInfo = this.liteReader.readSessionLite(path);
-                    if (liteInfo != null) {
-                        return new ReadResult(convertToSessionInfo(liteInfo), path, liteInfo.lastModified);
-                    }
-                    CodexHistoryReader.SessionInfo info = fallbackFullScan(path);
-                    long mtime = info != null ? safeStatMillis(path) : 0L;
-                    return new ReadResult(info, path, mtime);
-                } catch (Exception e) {
-                    LOG.debug("[CodexHistoryIndexService] Lite-read failed for " + path + ", trying fallback: " + e.getMessage());
-                    CodexHistoryReader.SessionInfo info = fallbackFullScan(path);
-                    long mtime = info != null ? safeStatMillis(path) : 0L;
-                    return new ReadResult(info, path, mtime);
-                }
-            }, LITE_READ_POOL));
+            try {
+                futures.add(CompletableFuture.supplyAsync(() -> readLite(path), LITE_READ_POOL));
+            } catch (RejectedExecutionException e) {
+                LOG.warn("[CodexHistoryIndexService] Lite-read queue full, reading synchronously: " + path);
+                futures.add(CompletableFuture.completedFuture(readLite(path)));
+            }
         }
 
         List<ReadResult> results = new ArrayList<>();
@@ -380,12 +377,31 @@ class CodexHistoryIndexService {
                 if (rr.info != null && this.parser.isValidSession(rr.info)) {
                     results.add(rr);
                 }
+            } catch (java.util.concurrent.TimeoutException e) {
+                future.cancel(true);
+                LOG.warn("[CodexHistoryIndexService] Timed out reading session; task cancelled");
             } catch (Exception e) {
                 LOG.warn("[CodexHistoryIndexService] Failed to read session: " + e.getMessage());
             }
         }
 
         return results;
+    }
+
+    private ReadResult readLite(Path path) {
+        try {
+            CodexSessionLiteReader.CodexLiteSessionInfo liteInfo = this.liteReader.readSessionLite(path);
+            if (liteInfo != null) {
+                return new ReadResult(convertToSessionInfo(liteInfo), path, liteInfo.lastModified, liteInfo.fileSize);
+            }
+            CodexHistoryReader.SessionInfo info = fallbackFullScan(path);
+            return new ReadResult(info, path, safeStatMillis(path), safeStatSize(path));
+        } catch (Exception e) {
+            LOG.debug("[CodexHistoryIndexService] Lite-read failed for " + path + ", trying fallback: " + e.getMessage());
+            CodexHistoryReader.SessionInfo info = fallbackFullScan(path);
+            return new ReadResult(info, path, info != null ? safeStatMillis(path) : 0L,
+                    info != null ? safeStatSize(path) : 0L);
+        }
     }
 
     private static long safeStatMillis(Path path) {
@@ -396,7 +412,15 @@ class CodexHistoryIndexService {
         }
     }
 
-    private record ReadResult(CodexHistoryReader.SessionInfo info, Path path, long mtime) {
+    private static long safeStatSize(Path path) {
+        try {
+            return Files.size(path);
+        } catch (IOException e) {
+            return 0L;
+        }
+    }
+
+    private record ReadResult(CodexHistoryReader.SessionInfo info, Path path, long mtime, long size) {
     }
 
     /**
@@ -444,7 +468,7 @@ class CodexHistoryIndexService {
             sessions = new ArrayList<>(sessions.subList(0, limit));
         }
 
-        return deduplicateSessions(sessions);
+        return CodexHistoryDeduplicator.deduplicate(sessions);
     }
 
     private List<CodexHistoryReader.SessionInfo> restoreSessionsFromIndex(SessionIndexManager.ProjectIndex projectIndex) {
@@ -460,7 +484,7 @@ class CodexHistoryIndexService {
             session.fileSize = entry.fileSize;
             sessions.add(session);
         }
-        return deduplicateSessions(sessions);
+        return CodexHistoryDeduplicator.deduplicate(sessions);
     }
 
     private void updateCodexIndex(
@@ -469,7 +493,8 @@ class CodexHistoryIndexService {
             List<CodexHistoryReader.SessionInfo> sessions,
             Map<String, FileMeta> sessionFiles
     ) throws IOException {
-        List<CodexHistoryReader.SessionInfo> deduplicatedSessions = deduplicateSessions(sessions);
+        List<CodexHistoryReader.SessionInfo> deduplicatedSessions =
+                CodexHistoryDeduplicator.deduplicate(sessions);
         SessionIndexManager.ProjectIndex projectIndex = new SessionIndexManager.ProjectIndex();
         projectIndex.lastDirScanTime = System.currentTimeMillis();
         projectIndex.fileCount = countSessionFiles();
@@ -489,6 +514,7 @@ class CodexHistoryIndexService {
                 try {
                     entry.fileRelativePath = this.sessionsDir.relativize(meta.path).toString();
                     entry.fileLastModified = meta.mtime;
+                    entry.fileSize = meta.size;
                 } catch (Exception e) {
                     LOG.debug("[CodexHistoryIndexService] Failed to relativize " + meta.path + ": " + e.getMessage());
                 }
@@ -500,63 +526,6 @@ class CodexHistoryIndexService {
         index.projects.put(cacheKey, projectIndex);
     }
 
-    static List<CodexHistoryReader.SessionInfo> deduplicateSessions(List<CodexHistoryReader.SessionInfo> sessions) {
-        Map<String, CodexHistoryReader.SessionInfo> deduplicated = new LinkedHashMap<>();
-
-        for (CodexHistoryReader.SessionInfo session : sessions) {
-            if (session == null || session.sessionId == null || session.sessionId.isEmpty()) {
-                continue;
-            }
-
-            CodexHistoryReader.SessionInfo existing = deduplicated.get(session.sessionId);
-            deduplicated.put(session.sessionId, mergeSessionInfo(existing, session));
-        }
-
-        List<CodexHistoryReader.SessionInfo> result = new ArrayList<>(deduplicated.values());
-        result.sort((a, b) -> Long.compare(b.lastTimestamp, a.lastTimestamp));
-        return result;
-    }
-
-    private static CodexHistoryReader.SessionInfo mergeSessionInfo(
-            CodexHistoryReader.SessionInfo existing,
-            CodexHistoryReader.SessionInfo incoming
-    ) {
-        if (existing == null) {
-            return copySession(incoming);
-        }
-
-        CodexHistoryReader.SessionInfo preferred = incoming.lastTimestamp >= existing.lastTimestamp ? incoming : existing;
-        CodexHistoryReader.SessionInfo fallback = preferred == incoming ? existing : incoming;
-        CodexHistoryReader.SessionInfo merged = copySession(preferred);
-
-        merged.lastTimestamp = Math.max(existing.lastTimestamp, incoming.lastTimestamp);
-        if (merged.firstTimestamp == 0 || (fallback.firstTimestamp > 0 && fallback.firstTimestamp < merged.firstTimestamp)) {
-            merged.firstTimestamp = fallback.firstTimestamp;
-        }
-        merged.messageCount = Math.max(existing.messageCount, incoming.messageCount);
-        if ((merged.title == null || merged.title.isEmpty()) && fallback.title != null && !fallback.title.isEmpty()) {
-            merged.title = fallback.title;
-        }
-        if ((merged.cwd == null || merged.cwd.isEmpty()) && fallback.cwd != null && !fallback.cwd.isEmpty()) {
-            merged.cwd = fallback.cwd;
-        }
-        merged.fileSize = Math.max(existing.fileSize, incoming.fileSize);
-
-        return merged;
-    }
-
-    private static CodexHistoryReader.SessionInfo copySession(CodexHistoryReader.SessionInfo session) {
-        CodexHistoryReader.SessionInfo copy = new CodexHistoryReader.SessionInfo();
-        copy.sessionId = session.sessionId;
-        copy.title = session.title;
-        copy.messageCount = session.messageCount;
-        copy.lastTimestamp = session.lastTimestamp;
-        copy.firstTimestamp = session.firstTimestamp;
-        copy.cwd = session.cwd;
-        copy.fileSize = session.fileSize;
-        return copy;
-    }
-
     private int countSessionFiles() throws IOException {
         try (Stream<Path> paths = Files.walk(sessionsDir)) {
             return (int) paths
@@ -564,6 +533,29 @@ class CodexHistoryIndexService {
                     .filter(path -> path.toString().endsWith(".jsonl"))
                     .count();
         }
+    }
+
+    private String codexCacheKey() {
+        return sessionsDir.toAbsolutePath().normalize().toString();
+    }
+
+    private static ExecutorService createLiteReadPool() {
+        int parallelism = Math.max(2, Runtime.getRuntime().availableProcessors());
+        AtomicInteger threadNumber = new AtomicInteger();
+        ThreadFactory threadFactory = runnable -> {
+            Thread thread = new Thread(runnable, "codex-lite-read-" + threadNumber.incrementAndGet());
+            thread.setDaemon(true);
+            return thread;
+        };
+        return new ThreadPoolExecutor(
+                parallelism,
+                parallelism,
+                30L,
+                TimeUnit.SECONDS,
+                new ArrayBlockingQueue<>(LITE_READ_QUEUE_CAPACITY),
+                threadFactory,
+                new ThreadPoolExecutor.CallerRunsPolicy()
+        );
     }
 
     /**

@@ -7,6 +7,7 @@ import org.junit.rules.TemporaryFolder;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.FileTime;
 
 import static org.junit.Assert.assertEquals;
@@ -159,6 +160,78 @@ public class SessionIndexManagerUpdateTest {
     }
 
     @Test
+    public void getUpdateTypeRecursive_detectsAppendWhenFileCountIsUnchanged() throws IOException {
+        Path sessionsDir = tmp.newFolder("codex-recursive-append").toPath();
+        Path sessionFile = sessionsDir.resolve("2026/10/21/rollout-session.jsonl");
+        Files.createDirectories(sessionFile.getParent());
+        Files.writeString(sessionFile, "initial\n");
+        Files.setLastModifiedTime(sessionFile, FileTime.fromMillis(INDEXED_FILE_MTIME));
+
+        SessionIndexManager.ProjectIndex projectIndex = codexProjectIndex(
+                sessionsDir, sessionFile, INDEXED_FILE_MTIME);
+        SessionIndexManager manager = new SessionIndexManager(tmp.newFolder("codex-recursive-cache").toPath());
+
+        assertEquals(SessionIndexManager.UpdateType.NONE,
+                manager.getUpdateTypeRecursive(projectIndex, sessionsDir));
+
+        Files.writeString(sessionFile, "appended\n", StandardOpenOption.APPEND);
+        Files.setLastModifiedTime(sessionFile, FileTime.fromMillis(INDEXED_FILE_MTIME + 2_000));
+
+        assertEquals(SessionIndexManager.UpdateType.INCREMENTAL,
+                manager.getUpdateTypeRecursive(projectIndex, sessionsDir));
+    }
+
+    @Test
+    public void getUpdateTypeRecursive_detectsSizeChangeWhenMtimeIsUnchanged() throws IOException {
+        Path sessionsDir = tmp.newFolder("codex-recursive-size").toPath();
+        Path sessionFile = sessionsDir.resolve("2026/10/21/rollout-session.jsonl");
+        Files.createDirectories(sessionFile.getParent());
+        Files.writeString(sessionFile, "initial\n");
+        Files.setLastModifiedTime(sessionFile, FileTime.fromMillis(INDEXED_FILE_MTIME));
+
+        SessionIndexManager.ProjectIndex projectIndex = codexProjectIndex(
+                sessionsDir, sessionFile, INDEXED_FILE_MTIME);
+        SessionIndexManager manager = new SessionIndexManager(tmp.newFolder("codex-recursive-size-cache").toPath());
+
+        Files.writeString(sessionFile, "appended\n", StandardOpenOption.APPEND);
+        Files.setLastModifiedTime(sessionFile, FileTime.fromMillis(INDEXED_FILE_MTIME));
+
+        assertEquals(SessionIndexManager.UpdateType.INCREMENTAL,
+                manager.getUpdateTypeRecursive(projectIndex, sessionsDir));
+    }
+
+    @Test
+    public void getUpdateTypeRecursive_ignoresSkippedSubagentFileWhenStable() throws IOException {
+        Path sessionsDir = tmp.newFolder("codex-recursive-subagent").toPath();
+        Path nested = sessionsDir.resolve("2026/10/21");
+        Files.createDirectories(nested);
+        Path mainFile = nested.resolve("rollout-main.jsonl");
+        Files.writeString(mainFile, "main session\n");
+        Files.setLastModifiedTime(mainFile, FileTime.fromMillis(INDEXED_FILE_MTIME));
+        Path subagentFile = nested.resolve("rollout-subagent.jsonl");
+        Files.writeString(subagentFile, "subagent session\n");
+
+        SessionIndexManager.ProjectIndex projectIndex = codexProjectIndex(
+                sessionsDir, mainFile, INDEXED_FILE_MTIME);
+        projectIndex.fileCount = 2;
+        SessionIndexManager manager = new SessionIndexManager(tmp.newFolder("codex-recursive-subagent-cache").toPath());
+
+        assertEquals(SessionIndexManager.UpdateType.NONE,
+                manager.getUpdateTypeRecursive(projectIndex, sessionsDir));
+    }
+
+    @Test
+    public void getUpdateTypeRecursive_handlesNullSessionList() throws IOException {
+        Path sessionsDir = tmp.newFolder("codex-null-sessions").toPath();
+        SessionIndexManager.ProjectIndex projectIndex = new SessionIndexManager.ProjectIndex();
+        projectIndex.sessions = null;
+        SessionIndexManager manager = new SessionIndexManager(tmp.newFolder("codex-null-sessions-cache").toPath());
+
+        assertEquals(SessionIndexManager.UpdateType.FULL,
+                manager.getUpdateTypeRecursive(projectIndex, sessionsDir));
+    }
+
+    @Test
     public void saveClaudeProjectIndex_preservesOtherProjects() throws IOException {
         SessionIndexManager manager = new SessionIndexManager(tmp.newFolder("project-merge-cache").toPath());
         SessionIndexManager.ProjectIndex firstProject = new SessionIndexManager.ProjectIndex();
@@ -190,6 +263,19 @@ public class SessionIndexManagerUpdateTest {
                 ""
         );
         entry.fileRelativePath = SESSION_ID + ".jsonl";
+        projectIndex.sessions.add(entry);
+        return projectIndex;
+    }
+
+    private SessionIndexManager.ProjectIndex codexProjectIndex(
+            Path sessionsDir, Path sessionFile, long fileMtime) throws IOException {
+        SessionIndexManager.ProjectIndex projectIndex = new SessionIndexManager.ProjectIndex();
+        projectIndex.fileCount = 1;
+        SessionIndexManager.SessionIndexEntry entry = new SessionIndexManager.SessionIndexEntry();
+        entry.sessionId = "thread-session";
+        entry.fileRelativePath = sessionsDir.relativize(sessionFile).toString();
+        entry.fileLastModified = fileMtime;
+        entry.fileSize = Files.size(sessionFile);
         projectIndex.sessions.add(entry);
         return projectIndex;
     }

@@ -1,8 +1,6 @@
 package com.github.claudecodegui.provider.codex;
 
 import com.github.claudecodegui.settings.ConfigPathManager;
-import com.github.claudecodegui.bridge.EnvironmentConfigurator;
-import com.github.claudecodegui.bridge.NodeDetector;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -272,11 +270,6 @@ public final class CodexHistoryPrivacy {
         }
     }
 
-    /**
-     * Resolves the effective CODEX_HOME by reading the daemon environment that
-     * {@link EnvironmentConfigurator} would assemble (no process is started).
-     * Memoized because history pagination constructs one privacy index per page.
-     */
     private static String resolveHomeScope() {
         String cached = cachedHomeScope;
         if (cached != null) {
@@ -284,9 +277,7 @@ public final class CodexHistoryPrivacy {
         }
         synchronized (CodexHistoryPrivacy.class) {
             if (cachedHomeScope == null) {
-                ProcessBuilder environment = new ProcessBuilder("node");
-                new EnvironmentConfigurator().updateProcessEnvironment(environment, NodeDetector.getInstance().getCachedNodePath());
-                cachedHomeScope = environment.environment().getOrDefault("CODEX_HOME", "default");
+                cachedHomeScope = CodexHomeResolver.resolveHomeScope();
             }
             return cachedHomeScope;
         }

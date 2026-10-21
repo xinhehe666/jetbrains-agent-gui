@@ -2,12 +2,10 @@ package com.github.claudecodegui.util;
 
 import com.intellij.openapi.diagnostic.Logger;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 
 /**
@@ -22,6 +20,12 @@ public final class ShellExecutor {
      * Default process timeout in seconds.
      */
     public static final int DEFAULT_TIMEOUT_SECONDS = 5;
+    private static final int OUTPUT_DRAIN_TIMEOUT_SECONDS = 2;
+
+    private enum OutputSelection {
+        FIRST,
+        LAST
+    }
 
     private ShellExecutor() {
         // Utility class, do not instantiate
@@ -101,66 +105,8 @@ public final class ShellExecutor {
             int timeoutSeconds,
             boolean useInteractive
     ) {
-        try {
-            ProcessBuilder pb = new ProcessBuilder(command);
-            if (useInteractive) {
-                // Set TERM=dumb to suppress extra output from interactive shells (color codes, prompts, etc.)
-                pb.environment().put("TERM", "dumb");
-            }
-            pb.redirectErrorStream(true);
-
-            Process process = pb.start();
-
-            // Wait for the process to complete (with timeout) to avoid blocking on readLine
-            boolean finished = process.waitFor(timeoutSeconds, TimeUnit.SECONDS);
-            if (!finished) {
-                LOG.debug(logPrefix + " command timed out");
-                process.destroyForcibly();
-                return ExecutionResult.timeout();
-            }
-
-            // Process has completed, now safe to read output
-            List<String> allLines = new ArrayList<>();
-            List<String> filteredLines = new ArrayList<>();
-            String validOutput = null;
-
-            try (BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    String trimmed = line.trim();
-                    allLines.add(trimmed);
-
-                    if (lineFilter.test(trimmed)) {
-                        validOutput = trimmed;
-                        // Return on the first valid line
-                        break;
-                    } else if (!trimmed.isEmpty()) {
-                        // Record filtered non-empty lines for debugging
-                        filteredLines.add(trimmed);
-                    }
-                }
-
-                // Read remaining lines
-                while ((line = reader.readLine()) != null) {
-                    allLines.add(line.trim());
-                }
-            }
-
-            // Log filtered lines at DEBUG level
-            if (!filteredLines.isEmpty() && LOG.isDebugEnabled()) {
-                LOG.debug(logPrefix + " filtered lines: " + filteredLines);
-            }
-
-            if (validOutput != null) {
-                return ExecutionResult.success(validOutput, allLines, filteredLines);
-            }
-
-            return ExecutionResult.failure();
-        } catch (Exception e) {
-            LOG.debug(logPrefix + " execution failed: " + e.getMessage());
-            return ExecutionResult.failure();
-        }
+        return executeInternal(
+                command, lineFilter, logPrefix, timeoutSeconds, useInteractive, OutputSelection.FIRST);
     }
 
     /**
@@ -178,55 +124,94 @@ public final class ShellExecutor {
             String logPrefix,
             int timeoutSeconds
     ) {
+        return executeInternal(
+                command, lineFilter, logPrefix, timeoutSeconds, true, OutputSelection.LAST);
+    }
+
+    private static ExecutionResult executeInternal(
+            List<String> command,
+            Predicate<String> lineFilter,
+            String logPrefix,
+            int timeoutSeconds,
+            boolean useInteractive,
+            OutputSelection selection
+    ) {
+        Process process = null;
+        ProcessOutputDrainer drainer = null;
         try {
             ProcessBuilder pb = new ProcessBuilder(command);
-            // Set TERM=dumb to suppress extra output from interactive shells
-            pb.environment().put("TERM", "dumb");
+            if (useInteractive) {
+                // Set TERM=dumb to suppress extra output from interactive shells (color codes, prompts, etc.)
+                pb.environment().put("TERM", "dumb");
+            }
             pb.redirectErrorStream(true);
 
-            Process process = pb.start();
+            process = pb.start();
+            List<String> allLines = new ArrayList<>();
+            List<String> filteredLines = new ArrayList<>();
+            AtomicReference<String> firstValid = new AtomicReference<>();
+            AtomicReference<String> lastValid = new AtomicReference<>();
 
-            // Wait for the process to complete (with timeout)
+            drainer = ProcessOutputDrainer.start(process, line -> {
+                String trimmed = line.trim();
+                allLines.add(trimmed);
+                if (lineFilter.test(trimmed)) {
+                    firstValid.compareAndSet(null, trimmed);
+                    lastValid.set(trimmed);
+                } else if (!trimmed.isEmpty()) {
+                    filteredLines.add(trimmed);
+                }
+            });
+
             boolean finished = process.waitFor(timeoutSeconds, TimeUnit.SECONDS);
             if (!finished) {
                 LOG.debug(logPrefix + " command timed out");
                 process.destroyForcibly();
+                awaitDrainer(drainer, logPrefix);
                 return ExecutionResult.timeout();
             }
 
-            // Read all output, keeping the last valid value
-            List<String> allLines = new ArrayList<>();
-            List<String> filteredLines = new ArrayList<>();
-            String lastValidValue = null;
-
-            try (BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    String trimmed = line.trim();
-                    allLines.add(trimmed);
-
-                    if (lineFilter.test(trimmed)) {
-                        lastValidValue = trimmed;
-                    } else if (!trimmed.isEmpty()) {
-                        filteredLines.add(trimmed);
-                    }
-                }
-            }
+            awaitDrainer(drainer, logPrefix);
 
             // Log filtered lines at DEBUG level
             if (!filteredLines.isEmpty() && LOG.isDebugEnabled()) {
                 LOG.debug(logPrefix + " filtered lines: " + filteredLines);
             }
 
-            if (lastValidValue != null) {
-                return ExecutionResult.success(lastValidValue, allLines, filteredLines);
+            String validOutput = selection == OutputSelection.FIRST
+                    ? firstValid.get()
+                    : lastValid.get();
+            if (validOutput != null) {
+                return ExecutionResult.success(validOutput, allLines, filteredLines);
             }
 
+            return ExecutionResult.failure();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             return ExecutionResult.failure();
         } catch (Exception e) {
             LOG.debug(logPrefix + " execution failed: " + e.getMessage());
             return ExecutionResult.failure();
+        } finally {
+            if (process != null && process.isAlive()) {
+                process.destroyForcibly();
+            }
+            if (drainer != null) {
+                drainer.cancel();
+            }
+        }
+    }
+
+    private static void awaitDrainer(ProcessOutputDrainer drainer, String logPrefix) {
+        try {
+            if (!drainer.await(OUTPUT_DRAIN_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+                LOG.debug(logPrefix + " output drain timed out");
+                drainer.cancel();
+                drainer.await(1, TimeUnit.SECONDS);
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            drainer.cancel();
         }
     }
 

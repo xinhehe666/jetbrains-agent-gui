@@ -115,7 +115,6 @@ const App = () => {
       ) : (
         <AppChatArea
           mergedMessages={mergedMessages}
-          sessionTitle={sessionTitle}
           getMessageText={getMessageText}
           getContentBlocks={getContentBlocks}
           findToolResult={findToolResult}

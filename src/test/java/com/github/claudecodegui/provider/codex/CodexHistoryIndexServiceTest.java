@@ -48,6 +48,7 @@ public class CodexHistoryIndexServiceTest {
         entry.firstTimestamp = mtime + 5000;
         entry.fileRelativePath = relative;
         entry.fileLastModified = mtime + 5000;  // drifted from actual file mtime
+        entry.fileSize = Files.size(file);
         existing.sessions.add(entry);
 
         CodexHistoryIndexService service = newService(sessionsDir);
@@ -87,6 +88,7 @@ public class CodexHistoryIndexServiceTest {
         entry.firstTimestamp = mtime;
         entry.fileRelativePath = relative;
         entry.fileLastModified = mtime;  // matches actual file mtime
+        entry.fileSize = Files.size(file);
         existing.sessions.add(entry);
 
         CodexHistoryIndexService service = newService(sessionsDir);
@@ -124,6 +126,7 @@ public class CodexHistoryIndexServiceTest {
         entry.firstTimestamp = mtime;
         entry.fileRelativePath = relative;
         entry.fileLastModified = mtime;
+        entry.fileSize = Files.size(existingFile);
         existing.sessions.add(entry);
 
         writeSessionFile(nested, "rollout-new.jsonl", "thread_new0987654321");
