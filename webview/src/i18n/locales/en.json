@@ -169,6 +169,37 @@
   },
   "settings": {
     "title": "Settings",
+    "onboarding": {
+      "title": "Complete your setup",
+      "description": "Complete these steps to get started with AI features.",
+      "steps": {
+        "node": {
+          "title": "Install Node.js",
+          "description": "Install Node.js, then set its path in Basic Configuration."
+        },
+        "claudeCli": {
+          "title": "Set up Claude CLI",
+          "description": "Install Claude CLI and sign in if you want to reuse your CLI login."
+        },
+        "sdk": {
+          "title": "Install SDK dependencies",
+          "description": "Open SDK Dependencies and install the required packages before first use."
+        }
+      },
+      "status": {
+        "ready": "Ready",
+        "actionRequired": "Action required",
+        "complete": "Complete",
+        "checking": "Checking",
+        "optional": "Optional"
+      },
+      "action": {
+        "openEnvironment": "Open Environment Settings",
+        "openDependencies": "Open SDK Dependencies",
+        "dismiss": "Dismiss"
+      },
+      "dismissedHint": "Setup dismissed. You can continue from Settings."
+    },
     "basic": {
       "title": "Basic Configuration",
       "description": "Configure page theme, language and Node.js environment",
