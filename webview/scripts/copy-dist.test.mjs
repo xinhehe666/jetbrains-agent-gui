@@ -9,7 +9,7 @@ import { test } from 'node:test';
 import { init, parse } from 'es-module-lexer';
 
 const script = fileURLToPath(new URL('./copy-dist.mjs', import.meta.url));
-const origin = 'https://cc-gui-webview.local';
+const origin = 'https://agent-gui-webview.local';
 
 // Exercise the real postbuild command in an isolated Vite output directory.
 const fixture = async (t, html) => {

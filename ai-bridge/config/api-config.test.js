@@ -264,7 +264,7 @@ test('isDangerousEnvVar blocks code injection and Codex CLI path overrides', () 
 });
 
 test('buildCliEnv strips stale CLI override env vars and sets host-managed for first-party auth', () => {
-  const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-gui-api-config-'));
+  const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-gui-api-config-'));
   // Active managed provider so loadClaudeSettings() returns settings; no cloud
   // flag set → host-managed should be '1'.
   writeCodemossClaudeConfig(tempHome, 'provider-a', {
@@ -379,7 +379,7 @@ test('buildCliEnv leaves CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST unset for cloud pr
   // The host-managed flag would make Claude Code strip it → 403, so it must be
   // absent — even when process.env already carries an inherited copy.
   for (const flag of ['CLAUDE_CODE_USE_BEDROCK', 'CLAUDE_CODE_USE_VERTEX', 'CLAUDE_CODE_USE_FOUNDRY']) {
-    const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-gui-api-config-'));
+    const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-gui-api-config-'));
     writeCodemossClaudeConfig(tempHome, 'provider-a', {
       'provider-a': { name: 'Provider A', settingsConfig: { env: { [flag]: '1' } } },
     });
@@ -403,7 +403,7 @@ test('buildCliEnv leaves CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST unset for CLI logi
   // no cloud-provider flag is present — the pre-fix code wrongly defaulted to
   // host-managed here. The flag must be absent, even when process.env carries an
   // inherited copy from a parent Claude Code host.
-  const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-gui-api-config-'));
+  const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-gui-api-config-'));
   writeCodemossClaudeConfig(tempHome, '__cli_login__');
   writeClaudeSettingsEnv(tempHome, {});
 
@@ -417,7 +417,7 @@ test('buildCliEnv leaves CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST unset for CLI logi
 });
 
 test('setupApiKey does not fall back to Claude CLI credentials on disk', () => {
-  const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-gui-api-config-'));
+  const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-gui-api-config-'));
   const claudeDir = path.join(tempHome, '.claude');
   fs.mkdirSync(claudeDir, { recursive: true });
 
@@ -434,7 +434,7 @@ test('setupApiKey does not fall back to Claude CLI credentials on disk', () => {
 });
 
 test('setupApiKey accepts synced provider credentials when a managed provider is active', () => {
-  const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-gui-api-config-'));
+  const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-gui-api-config-'));
   const claudeDir = path.join(tempHome, '.claude');
   fs.mkdirSync(claudeDir, { recursive: true });
   writeCodemossClaudeConfig(tempHome, 'provider-a', {
@@ -462,7 +462,7 @@ test('setupApiKey accepts synced provider credentials when a managed provider is
 });
 
 test('setupApiKey does not read settings.json credentials when Claude provider is inactive', () => {
-  const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-gui-api-config-'));
+  const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-gui-api-config-'));
   const claudeDir = path.join(tempHome, '.claude');
   fs.mkdirSync(claudeDir, { recursive: true });
   writeCodemossClaudeConfig(tempHome, '');
@@ -486,7 +486,7 @@ test('setupApiKey does not read settings.json credentials when Claude provider i
 test('setupApiKey enters CLI login when config.json sets claude.current=__cli_login__', () => {
   // CLI login mode is identified by ~/.codemoss/config.json — NOT by any flag in
   // ~/.claude/settings.json. The plugin must never mutate the user's settings.json.
-  const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-gui-api-config-'));
+  const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-gui-api-config-'));
   const claudeDir = path.join(tempHome, '.claude');
   fs.mkdirSync(claudeDir, { recursive: true });
   writeCodemossClaudeConfig(tempHome, '__cli_login__');
@@ -501,7 +501,7 @@ test('setupApiKey enters CLI login when config.json sets claude.current=__cli_lo
 });
 
 test('setupApiKey CLI login takes priority over existing API keys (no fallback)', () => {
-  const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-gui-api-config-'));
+  const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-gui-api-config-'));
   const claudeDir = path.join(tempHome, '.claude');
   fs.mkdirSync(claudeDir, { recursive: true });
   writeCodemossClaudeConfig(tempHome, '__cli_login__');
@@ -527,11 +527,11 @@ test('setupApiKey CLI login takes priority over existing API keys (no fallback)'
   assert.equal(result.result.apiKeySource, 'CLI login (SDK native auth)');
 });
 
-test('setupApiKey honors legacy CCGUI_CLI_LOGIN_AUTHORIZED flag for backwards compatibility', () => {
-  // Earlier plugin versions wrote CCGUI_CLI_LOGIN_AUTHORIZED=1 into settings.json.
+test('setupApiKey honors legacy AgentGUI_CLI_LOGIN_AUTHORIZED flag for backwards compatibility', () => {
+  // Earlier plugin versions wrote AgentGUI_CLI_LOGIN_AUTHORIZED=1 into settings.json.
   // Users upgrading from those versions may still have the flag — keep honoring it
   // as a fallback so they keep working until the residue is cleaned up.
-  const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-gui-api-config-'));
+  const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-gui-api-config-'));
   const claudeDir = path.join(tempHome, '.claude');
   fs.mkdirSync(claudeDir, { recursive: true });
   // config.json points at the legacy provider id, not __cli_login__
@@ -541,7 +541,7 @@ test('setupApiKey honors legacy CCGUI_CLI_LOGIN_AUTHORIZED flag for backwards co
     path.join(claudeDir, 'settings.json'),
     JSON.stringify({
       env: {
-        CCGUI_CLI_LOGIN_AUTHORIZED: '1',
+        AgentGUI_CLI_LOGIN_AUTHORIZED: '1',
       },
     }),
     'utf8'
@@ -554,7 +554,7 @@ test('setupApiKey honors legacy CCGUI_CLI_LOGIN_AUTHORIZED flag for backwards co
 });
 
 test('injectStartupEnvVars ignores local proxy settings when Claude provider is inactive', () => {
-  const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-gui-api-config-'));
+  const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-gui-api-config-'));
   const claudeDir = path.join(tempHome, '.claude');
   fs.mkdirSync(claudeDir, { recursive: true });
   writeCodemossClaudeConfig(tempHome, '');
@@ -576,7 +576,7 @@ test('injectStartupEnvVars ignores local proxy settings when Claude provider is 
 });
 
 test('injectStartupEnvVars ignores local proxy settings for managed providers', () => {
-  const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-gui-api-config-'));
+  const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-gui-api-config-'));
   const claudeDir = path.join(tempHome, '.claude');
   fs.mkdirSync(claudeDir, { recursive: true });
   writeCodemossClaudeConfig(tempHome, 'provider-a', {
@@ -603,7 +603,7 @@ test('injectStartupEnvVars ignores local proxy settings for managed providers', 
 });
 
 test('injectStartupEnvVars accepts proxy settings for the authorized local provider', () => {
-  const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-gui-api-config-'));
+  const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-gui-api-config-'));
   const claudeDir = path.join(tempHome, '.claude');
   fs.mkdirSync(claudeDir, { recursive: true });
   writeCodemossClaudeConfig(tempHome, '__local_settings_json__');
@@ -625,7 +625,7 @@ test('injectStartupEnvVars accepts proxy settings for the authorized local provi
 });
 
 test('injectStartupEnvVars clears previously injected proxy vars after switching away from local mode', () => {
-  const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-gui-api-config-'));
+  const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-gui-api-config-'));
   const claudeDir = path.join(tempHome, '.claude');
   fs.mkdirSync(claudeDir, { recursive: true });
   writeCodemossClaudeConfig(tempHome, '__local_settings_json__');
@@ -647,7 +647,7 @@ test('injectStartupEnvVars clears previously injected proxy vars after switching
 });
 
 test('injectStartupEnvVars injects AWS credential vars for the authorized local provider', () => {
-  const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-gui-api-config-'));
+  const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-gui-api-config-'));
   const claudeDir = path.join(tempHome, '.claude');
   fs.mkdirSync(claudeDir, { recursive: true });
   writeCodemossClaudeConfig(tempHome, '__local_settings_json__');
@@ -671,7 +671,7 @@ test('injectStartupEnvVars injects AWS credential vars for the authorized local 
 });
 
 test('injectStartupEnvVars clears previously injected AWS credential vars after switching away from local mode', () => {
-  const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-gui-api-config-'));
+  const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-gui-api-config-'));
   const claudeDir = path.join(tempHome, '.claude');
   fs.mkdirSync(claudeDir, { recursive: true });
   writeCodemossClaudeConfig(tempHome, '__local_settings_json__');

@@ -4,7 +4,7 @@ import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
   // A stable asset origin lets Remote JCEF reuse chunks across chat browsers.
-  base: 'https://cc-gui-webview.local/',
+  base: 'https://agent-gui-webview.local/',
   plugins: [
     react(),
     tailwindcss(),

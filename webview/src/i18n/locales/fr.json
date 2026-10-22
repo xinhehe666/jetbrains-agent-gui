@@ -532,27 +532,11 @@
       "expand": "Expand Sidebar",
       "collapse": "Collapse Sidebar"
     },
-    "community": "Communauté officielle",
-    "communityDesc": "Scannez le code QR ci-dessous pour rejoindre le groupe WeChat officiel pour obtenir les dernières nouvelles et le support technique",
-    "communityQrTip": "Scannez avec WeChat pour rejoindre la communauté",
-    "communityQrAlt": "Code QR de la communauté WeChat officielle",
-    "socialDocs": "Documentation officielle",
-    "socialTitle": "Suivez-nous",
-    "socialGithub": "Dépôt GitHub — mettez une étoile !",
-    "socialX": "X (Twitter) @ZPeng31310",
-    "socialZhihu": "Zhihu @vscodeai",
-    "socialXiaohongshu": "Xiaohongshu (RED)",
-    "socialDouyin": "Douyin — survolez pour scanner et suivre",
-    "socialYoutube": "Chaîne YouTube",
-    "douyinQrAlt": "Code QR Douyin",
-    "douyinId": "ID Douyin : nengyongai",
-    "douyinCopied": "ID Douyin copié dans le presse-papiers",
-    "douyinCopyFailed": "Échec de la copie. Veuillez copier manuellement.",
-    "sponsor": "Sponsor",
-    "sponsorDesc": "If this project helps you, consider sponsoring to support ongoing maintenance!",
-    "alipay": "Alipay",
-    "wechatPay": "WeChat Pay",
-    "paypal": "PayPal",
+    "resources": "Ressources",
+    "socialDocs": "Documentation",
+    "socialTitle": "Ressources Agent GUI",
+    "socialDesc": "Documentation, suivi des problèmes et historique des versions de cette branche.",
+    "socialIssues": "Signaler un problème",
     "provider": {
       "currentConfig": "Configuration ClaudeCode actuelle",
       "loading": "Chargement...",
@@ -635,7 +619,7 @@
             "proxyConfigCodeLabel": "~/.claude/settings.json",
             "proxyConfigCode": "{\n  \"env\": {\n    \"HTTP_PROXY\": \"http://127.0.0.1:7897\",\n    \"HTTPS_PROXY\": \"http://127.0.0.1:7897\"\n  }\n}",
             "issuePrefix": "Si cela ne fonctionne toujours pas, signalez un problème sur GitHub : ",
-            "issueUrl": "https://github.com/zhukunpenglinyutong/idea-claude-code-gui/issues"
+            "issueUrl": "https://github.com/xinhehe666/jetbrains-cc-gui/issues"
           },
           "codex": {
             "title": "Configuration du compte d'abonnement Codex",
@@ -649,7 +633,7 @@
             "proxyConfigCodeLabel": "",
             "proxyConfigCode": "",
             "issuePrefix": "Si cela ne fonctionne toujours pas, signalez un problème sur GitHub : ",
-            "issueUrl": "https://github.com/zhukunpenglinyutong/idea-claude-code-gui/issues"
+            "issueUrl": "https://github.com/xinhehe666/jetbrains-cc-gui/issues"
           }
         }
       },
@@ -1098,7 +1082,7 @@
   },
   "config": {
     "clickToCopy": "Cliquer pour copier",
-    "officialDocs": "Documentation officielle",
+    "officialDocs": "Documentation",
     "switch": "Basculer",
     "switchProvider": "Changer de fournisseur",
     "runtimeProvider": {

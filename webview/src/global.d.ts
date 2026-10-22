@@ -1116,19 +1116,19 @@ interface Window {
   __INITIAL_DSH_PRESETS__?: string[];
 
   /** Runtime page generation established by Java before exposing the bridge. */
-  __CCG_PAGE_GENERATION__?: number;
+  __AGENTGUI_PAGE_GENERATION__?: number;
 
   /** Identifies initial load, startup retry, or runtime recovery for this page. */
-  __CCGUI_PAGE_LOAD_KIND__?: 'initial_load' | 'startup_retry' | 'runtime_recovery';
+  __AGENTGUI_PAGE_LOAD_KIND__?: 'initial_load' | 'startup_retry' | 'runtime_recovery';
 
   /** True after Java has installed the runtime generation and load context. */
-  __CCGUI_PAGE_CONTEXT_READY__?: boolean;
+  __AGENTGUI_PAGE_CONTEXT_READY__?: boolean;
 
   /** True for a native watchdog reload that reuses the tab's original HTML. */
-  __CCGUI_RECOVERY_RELOAD__?: boolean;
+  __AGENTGUI_RECOVERY_RELOAD__?: boolean;
 
   /** True after React applies Java's authoritative recovery provider/model state. */
-  __CCGUI_RECOVERY_STATE_APPLIED__?: boolean;
+  __AGENTGUI_RECOVERY_STATE_APPLIED__?: boolean;
 
   /** Applies the current Java session configuration without echoing bridge commands. */
   applyBackendTabState?: (json: string) => void;

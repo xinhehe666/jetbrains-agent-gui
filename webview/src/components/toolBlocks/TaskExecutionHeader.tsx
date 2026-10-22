@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 
 const MONO_FONT_STYLE: React.CSSProperties = {
-  fontFamily: "var(--cc-gui-code-font-family, var(--idea-editor-font-family, 'JetBrains Mono', 'Consolas', monospace))",
+  fontFamily: "var(--agent-gui-code-font-family, var(--idea-editor-font-family, 'JetBrains Mono', 'Consolas', monospace))",
 };
 const NORMAL_WEIGHT_STYLE: React.CSSProperties = { fontWeight: 'normal' };
 

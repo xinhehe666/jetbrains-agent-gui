@@ -175,7 +175,7 @@ test('resolveCliPath expands {localAppData} candidates (OMP Windows installer la
 
 test('versionManagerBinDirs scans nvm/fnm roots newest-first and lists static managers', () => {
   if (process.platform === 'win32') return;
-  const home = mkdtempSync(join(tmpdir(), 'cc-gui-vm-home-'));
+  const home = mkdtempSync(join(tmpdir(), 'agent-gui-vm-home-'));
   mkdirSync(join(home, '.nvm', 'versions', 'node', 'v22.22.3', 'bin'), { recursive: true });
   mkdirSync(join(home, '.nvm', 'versions', 'node', 'v24.11.1', 'bin'), { recursive: true });
   mkdirSync(join(home, '.nvm', 'versions', 'node', 'v9.11.2', 'bin'), { recursive: true });
@@ -199,16 +199,16 @@ test('versionManagerBinDirs scans nvm/fnm roots newest-first and lists static ma
 
 test('resolveCliPath finds a CLI shim installed under an nvm version dir', () => {
   if (process.platform === 'win32') return;
-  const fakeHome = mkdtempSync(join(tmpdir(), 'cc-gui-nvm-home-'));
+  const fakeHome = mkdtempSync(join(tmpdir(), 'agent-gui-nvm-home-'));
   const binDir = join(fakeHome, '.nvm', 'versions', 'node', 'v22.22.3', 'bin');
   mkdirSync(binDir, { recursive: true });
-  writeFileSync(join(binDir, 'cc-gui-fake-cli'), '#!/bin/sh\necho 1.0.0\n', { mode: 0o755 });
+  writeFileSync(join(binDir, 'agent-gui-fake-cli'), '#!/bin/sh\necho 1.0.0\n', { mode: 0o755 });
   // resolveCliPath reads os.homedir(), which honors $HOME on POSIX.
   const savedHome = process.env.HOME;
   process.env.HOME = fakeHome;
   try {
-    const resolved = resolveCliPath({ binaryName: 'cc-gui-fake-cli', envKeys: [], homeCandidates: [] });
-    assert.equal(resolved, join(binDir, 'cc-gui-fake-cli'));
+    const resolved = resolveCliPath({ binaryName: 'agent-gui-fake-cli', envKeys: [], homeCandidates: [] });
+    assert.equal(resolved, join(binDir, 'agent-gui-fake-cli'));
   } finally {
     if (savedHome === undefined) {
       delete process.env.HOME;
@@ -369,7 +369,7 @@ test('enrichPathWithBinDirs skips duplicates already on PATH', () => {
 
 test('buildCliSpawnEnv leads PATH with the resolved binary own dir', () => {
   if (process.platform === 'win32') return;
-  const home = mkdtempSync(join(tmpdir(), 'cc-gui-spawn-env-'));
+  const home = mkdtempSync(join(tmpdir(), 'agent-gui-spawn-env-'));
   const env = buildCliSpawnEnv(join(home, '.hermes', 'node', 'bin', 'pi'), home, { PATH: '/usr/bin' });
   const parts = env.PATH.split(':');
   assert.equal(parts[0], join(home, '.hermes', 'node', 'bin'));

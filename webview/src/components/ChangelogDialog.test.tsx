@@ -2,7 +2,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import ChangelogDialog from './ChangelogDialog';
 
-const REPO_URL = 'https://github.com/zhukunpenglinyutong/jetbrains-cc-gui';
+const REPO_URL = 'https://github.com/xinhehe666/jetbrains-cc-gui';
 const openBrowserMock = vi.fn();
 
 vi.mock('react-i18next', () => ({
@@ -13,7 +13,7 @@ vi.mock('react-i18next', () => ({
 }));
 
 vi.mock('../utils/bridge', () => ({
-  GITHUB_REPO_URL: 'https://github.com/zhukunpenglinyutong/jetbrains-cc-gui',
+  GITHUB_REPO_URL: 'https://github.com/xinhehe666/jetbrains-cc-gui',
   openBrowser: (...args: unknown[]) => openBrowserMock(...args),
 }));
 

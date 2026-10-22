@@ -586,11 +586,11 @@ export function setupApiKey() {
   // Source of truth: ~/.codemoss/config.json (claude.current === "__cli_login__"),
   // surfaced by getClaudeRuntimeState() above. We deliberately do NOT consult
   // ~/.claude/settings.json for this signal — that file is user-owned and must not
-  // be mutated by provider switches. The legacy CCGUI_CLI_LOGIN_AUTHORIZED env flag
+  // be mutated by provider switches. The legacy AgentGUI_CLI_LOGIN_AUTHORIZED env flag
   // is honored as a fallback for users upgrading from versions that wrote it to
   // settings.json, so they keep working until that residue is cleaned up.
   const cliLoginAuthorized =
-    runtimeState.access === 'cli_login' || settings?.env?.CCGUI_CLI_LOGIN_AUTHORIZED === '1';
+    runtimeState.access === 'cli_login' || settings?.env?.AgentGUI_CLI_LOGIN_AUTHORIZED === '1';
   if (cliLoginAuthorized) {
     // Use empty string assignment instead of delete so the SDK falls through to
     // its native OAuth flow without inheriting stale values from prior requests.

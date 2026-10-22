@@ -131,7 +131,7 @@ async function withResumeRetry(cli, sessionId, cwd, op) {
 // Permission mode mapping
 // =============================================================================
 
-/** CC GUI permission mode → zcode session mode. */
+/** Agent GUI permission mode → zcode session mode. */
 export function normalizeZcodeMode(permissionMode) {
   const mode = String(permissionMode || '').trim();
   switch (mode) {
@@ -423,12 +423,12 @@ export async function abortCurrentTurn() {
   try {
     await client.request('v4/command', {
       commandId: `stop-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
-      clientId: 'cc-gui',
+      clientId: 'agent-gui',
       sessionId,
       type: 'stop',
       payload: {},
       issuedAt: Date.now(),
-      connectionId: 'cc-gui',
+      connectionId: 'agent-gui',
       clientMode: 'desktop-continuous',
     });
     v4Accepted = true;

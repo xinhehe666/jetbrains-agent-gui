@@ -18,9 +18,9 @@ import { getClaudeProjectSessionFilePath } from '../../utils/path-utils.js';
 
 
 test('persistJsonlMessage and loadSessionHistory keep using a legacy symlink-keyed session', () => {
-  const realDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-gui-legacy-real-'));
+  const realDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-gui-legacy-real-'));
   const linkDir = `${realDir}-link`;
-  const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-gui-legacy-home-'));
+  const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-gui-legacy-home-'));
   try {
     try {
       fs.symlinkSync(realDir, linkDir, 'dir');
@@ -69,7 +69,7 @@ test('persistJsonlMessage and loadSessionHistory keep using a legacy symlink-key
 });
 
 test('buildSessionMessagesPayload reports a missing session file separately from empty history', () => {
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-gui-claude-session-'));
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-gui-claude-session-'));
   try {
     const missing = path.join(tempDir, 'does-not-exist.jsonl');
     assert.deepEqual(buildSessionMessagesPayload(missing), {
@@ -91,7 +91,7 @@ test('buildSessionMessagesPayload reports a missing session file separately from
 });
 
 test('buildSessionMessagesPayload rejects a malformed history tail instead of returning partial success', () => {
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-gui-claude-session-'));
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-gui-claude-session-'));
   try {
     const file = path.join(tempDir, 'session.jsonl');
     fs.writeFileSync(file, [
@@ -114,7 +114,7 @@ test('buildSessionMessagesPayload rejects a malformed history tail instead of re
 });
 
 test('buildSessionMessagesPayload keeps history usable when a stale interior line is malformed', () => {
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-gui-claude-session-'));
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-gui-claude-session-'));
   try {
     const file = path.join(tempDir, 'session.jsonl');
     // The damaged line is followed by valid rows, so the file is not being
@@ -135,7 +135,7 @@ test('buildSessionMessagesPayload keeps history usable when a stale interior lin
 });
 
 test('buildSessionMessagesPayload still reports incomplete when a torn tail follows interior damage', () => {
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-gui-claude-session-'));
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-gui-claude-session-'));
   try {
     const file = path.join(tempDir, 'session.jsonl');
     // Interior corruption AND an unterminated last line. malformedTail is decided
@@ -158,8 +158,8 @@ test('buildSessionMessagesPayload still reports incomplete when a torn tail foll
 });
 
 test('getLatestUserMessage reports incomplete when a torn tail follows interior damage', () => {
-  const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-gui-claude-project-'));
-  const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-gui-claude-home-'));
+  const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-gui-claude-project-'));
+  const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-gui-claude-home-'));
   try {
     const sessionServiceUrl = new URL('./session-service.js', import.meta.url).href;
     const pathUtilsUrl = new URL('../../utils/path-utils.js', import.meta.url).href;
@@ -216,8 +216,8 @@ test('getLatestUserMessage reports incomplete when a torn tail follows interior 
 });
 
 test('loadSessionHistory keeps whatever complete lines exist instead of blocking on a torn tail', () => {
-  const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-gui-claude-project-'));
-  const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-gui-claude-home-'));
+  const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-gui-claude-project-'));
+  const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-gui-claude-home-'));
   try {
     // Home resolution is cached, and Windows reads USERPROFILE. Isolate both
     // before importing the modules so this regression never writes real history.
@@ -254,7 +254,7 @@ test('buildSessionMessagesPayload rewrites a queued_command attachment carrier i
   // attachment rather than a user message. Java's MessageParser drops
   // non-user/assistant rows, so the reader must reshape it into a user message
   // or the subagent card stays stuck on the launch ack text after a reload.
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-gui-claude-session-'));
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-gui-claude-session-'));
   try {
     const file = path.join(tempDir, 'session.jsonl');
     const xml = '<task-notification>\n<tool-use-id>toolu_att</tool-use-id>\n<status>completed</status>\n<result>the report</result>\n</task-notification>';
@@ -286,7 +286,7 @@ test('buildSessionMessagesPayload rewrites a queued_command attachment carrier i
 });
 
 test('buildSessionMessagesPayload keeps a parent-linked queued command attachment on the effective chain', () => {
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-gui-claude-session-'));
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-gui-claude-session-'));
   try {
     const file = path.join(tempDir, 'session.jsonl');
     const xml = '<task-notification>do the thing</task-notification>';
@@ -323,7 +323,7 @@ test('buildSessionMessagesPayload keeps a parent-linked queued command attachmen
 test('buildSessionMessagesPayload leaves a non-task-notification queued_command attachment untouched', () => {
   // An enqueued user prompt is also a queued_command attachment but not a
   // task-notification carrier; it must not be rewritten into a user message.
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-gui-claude-session-'));
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-gui-claude-session-'));
   try {
     const file = path.join(tempDir, 'session.jsonl');
     const queuedPrompt = {
@@ -347,7 +347,7 @@ test('buildSessionMessagesPayload drops the CLI interruption marker rows', () =>
   // they reach the chat they render as a phantom user message, and their uuid
   // hijacks getLatestUserMessage so the rewind uuid-sync starves the user's
   // real last message. Both marker variants must be dropped.
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-gui-claude-session-'));
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-gui-claude-session-'));
   try {
     const file = path.join(tempDir, 'session.jsonl');
     fs.writeFileSync(file, [
@@ -370,7 +370,7 @@ test('buildSessionMessagesPayload drops the CLI interruption marker rows', () =>
 test('buildSessionMessagesPayload keeps a user message that merely mentions the marker text', () => {
   // Only whole content exactly equal to the marker is synthetic; a real user
   // prompt that mentions it must survive.
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-gui-claude-session-'));
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-gui-claude-session-'));
   try {
     const file = path.join(tempDir, 'session.jsonl');
     fs.writeFileSync(file, JSON.stringify({
@@ -392,7 +392,7 @@ test('buildSessionMessagesPayload drops rewound branches of the transcript', () 
   // message parents onto the pre-rewind assistant and the discarded span
   // stays on disk as a dead branch. Reading line-by-line would render it;
   // only the parentUuid chain from the newest leaf is live.
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-gui-claude-session-'));
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-gui-claude-session-'));
   try {
     const file = path.join(tempDir, 'session.jsonl');
     fs.writeFileSync(file, [
@@ -457,7 +457,7 @@ test('isInterruptionMarker matches only the synthetic markers', () => {
  * Each user message gets a uuid so it counts as a turn start.
  */
 function writeTurnFixture(turnCount) {
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-gui-claude-page-'));
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-gui-claude-page-'));
   const file = path.join(tempDir, 'session.jsonl');
   const lines = [];
   for (let i = 0; i < turnCount; i++) {
@@ -534,7 +534,7 @@ test('buildSessionMessagesPagePayload sets cursorReset when beforeTurn exceeds h
 test('buildSessionMessagesPagePayload never splits a turn across pages', () => {
   // A turn = user + assistant + tool rows. The page boundary must align to
   // the user message, never cut between a tool_use and its tool_result.
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-gui-claude-page-'));
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-gui-claude-page-'));
   try {
     const file = path.join(tempDir, 'session.jsonl');
     const lines = [];
@@ -635,7 +635,7 @@ test('extractSessionTitle returns the trimmed title and skips blank records', ()
 });
 
 test('buildSessionMessagesPagePayload carries the CLI session title', () => {
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-gui-claude-page-'));
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-gui-claude-page-'));
   try {
     const file = path.join(tempDir, 'session.jsonl');
     const lines = [
@@ -655,7 +655,7 @@ test('buildSessionMessagesPagePayload carries the CLI session title', () => {
 });
 
 test('buildSessionMessagesPagePayload reports missing instead of an empty page for a pruned session', () => {
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-gui-claude-page-'));
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-gui-claude-page-'));
   try {
     // A pruned transcript must surface as missing so Java clears the stale
     // session ID; an "empty page" success would keep resuming a dead session.
@@ -682,7 +682,7 @@ test('buildSessionMessagesPagePayload keeps short sessions in one page', () => {
 });
 
 test('buildSessionMessagesPayload ignores null JSONL entries as before', () => {
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-gui-null-history-'));
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-gui-null-history-'));
   try {
     const file = path.join(tempDir, 'session.jsonl');
     fs.writeFileSync(file, 'null\n' + JSON.stringify({ type: 'assistant', message: { content: 'answer' } }) + '\n');

@@ -16,47 +16,9 @@
   font-size: 13px;
 }
 
-.qrcodeContainer {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 20px 0;
-  margin-top: 12px;
-}
-
-.qrcodeWrapper {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  padding: 16px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-primary);
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.qrcodeImage {
-  width: 200px;
-  height: 200px;
-  object-fit: contain;
-  border-radius: 4px;
-  background: #ffffff;
-  padding: 8px;
-}
-
-.qrcodeTip {
-  margin: 0;
-  font-size: 14px;
-  color: var(--text-tertiary);
-  text-align: center;
-}
-
-/* Social links + version history */
+/* Repository links + version history */
 .socialSection {
-  margin-top: 40px;
-  padding-top: 24px;
-  border-top: 1px solid var(--border-primary);
+  margin-top: 24px;
 }
 
 .socialHeader {
@@ -76,6 +38,12 @@
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.resourceLabel {
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .socialRow {
@@ -118,78 +86,6 @@
   }
 }
 
-/* Brand accent colors on hover */
-.socialChipZhihu:hover {
-  color: #3388ff;
-}
-
-.socialChipXiaohongshu:hover {
-  color: #ff2442;
-}
-
-.socialChipDouyin:hover {
-  color: #fe2c55;
-}
-
-.socialChipYoutube:hover {
-  color: #ff4d4f;
-}
-
-/* Douyin QR popover (hover/focus, no navigation) */
-.douyinChip {
-  position: relative;
-}
-
-.douyinPopover {
-  position: absolute;
-  bottom: calc(100% + 12px);
-  left: 50%;
-  transform: translate(-50%, 6px);
-  width: 200px;
-  padding: 10px 10px 8px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-primary);
-  border-radius: 10px;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s;
-  z-index: 100;
-
-  /* arrow */
-  &::after {
-    content: '';
-    position: absolute;
-    top: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    border: 6px solid transparent;
-    border-top-color: var(--border-primary);
-  }
-}
-
-.douyinChip:hover .douyinPopover,
-.douyinChip:focus-within .douyinPopover {
-  opacity: 1;
-  visibility: visible;
-  transform: translate(-50%, 0);
-  pointer-events: auto;
-}
-
-.douyinPopoverImage {
-  display: block;
-  width: 100%;
-  border-radius: 6px;
-}
-
-.douyinPopoverTip {
-  margin: 8px 0 2px;
-  font-size: 12px;
-  color: var(--text-tertiary);
-  text-align: center;
-}
-
 .versionHistoryBtn {
   display: inline-flex;
   align-items: center;
@@ -226,22 +122,5 @@
   .sectionDesc {
     font-size: 12px;
     margin-bottom: 16px;
-  }
-
-  .qrcodeContainer {
-    padding: 16px 0;
-  }
-
-  .qrcodeWrapper {
-    padding: 14px;
-  }
-
-  .qrcodeImage {
-    width: 176px;
-    height: 176px;
-  }
-
-  .qrcodeTip {
-    font-size: 13px;
   }
 }

@@ -5,7 +5,7 @@ import { promisify } from 'node:util';
 import { gzip as gzipCallback, constants as zlibConstants } from 'node:zlib';
 
 const cwd = process.cwd();
-const webviewAssetOrigin = 'https://cc-gui-webview.local';
+const webviewAssetOrigin = 'https://agent-gui-webview.local';
 const distFile = path.resolve(cwd, 'dist/index.html');
 const targetFile = path.resolve(cwd, '../src/main/resources/html/claude-chat.html');
 const distAssetsDir = path.resolve(cwd, 'dist/assets');
@@ -56,7 +56,7 @@ const injectCompressedModuleBootstrap = (html) => {
           URL.revokeObjectURL(objectUrl);
         }
       })().catch((error) => {
-        console.error('[CC GUI] Webview bootstrap failed', error);
+        console.error('[Agent GUI] Webview bootstrap failed', error);
         // A blank chat tab is indistinguishable from a slow one; surface the failure.
         const fallback = document.createElement('p');
         fallback.style.cssText = 'padding:16px;font-family:sans-serif';

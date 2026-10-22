@@ -22,7 +22,7 @@ test('packaged chat tabs bootstrap compressed assets and preserve input and lazy
 
   // Mirror JCEF's binary resource handler: .gz is fetched as-is, while lazy modules
   // and styles are decompressed by Java before reaching Chromium.
-  await context.route('https://cc-gui-webview.local/assets/**', async (route) => {
+  await context.route('https://agent-gui-webview.local/assets/**', async (route) => {
     const fileName = path.posix.basename(new URL(route.request().url()).pathname);
     const compressed = fileName.endsWith('.js') || fileName.endsWith('.css');
     const stored = await readFile(path.join(assets, compressed ? `${fileName}.gz` : fileName));
@@ -102,7 +102,7 @@ test('packaged chat tabs bootstrap compressed assets and preserve input and lazy
         };
         mermaid.initialize({ startOnLoad: false, securityLevel: 'strict' });
         return (await mermaid.render('packaged-assets-smoke', 'graph TD; A-->B;')).svg;
-      }, `https://cc-gui-webview.local/assets/${mermaidFile!.slice(0, -3)}`);
+      }, `https://agent-gui-webview.local/assets/${mermaidFile!.slice(0, -3)}`);
       expect(diagram).toContain('<svg');
     }
     await input.fill(`packaged tab ${tab + 1}`);

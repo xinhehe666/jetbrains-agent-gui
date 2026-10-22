@@ -41,7 +41,7 @@ tasks.named('checkstyleTest') {
     enabled = false
 }
 
-group = 'com.github.idea-claude-code-gui'
+group = 'com.github.agentgui'
 // Keep this line as a plain literal: webview/scripts/extract-version.mjs matches it
 // with /^version\s*=\s*'(.+)'$/ to generate the webview's APP_VERSION.
 version = '0.6.1'
@@ -133,7 +133,7 @@ dependencies {
 
         // Compile-time dependency only. Git4Idea is bundled in all JetBrains
         // IDEs that support Git (IC/PC/PY/RD); plugin.xml declares it as an
-        // optional <depends> (git-features.xml) so CC GUI also installs in
+        // optional <depends> (git-features.xml) so Agent GUI also installs in
         // Git-less IDE configurations. Used for real `git diff` via
         // git4idea.commands.* in the Commit AI feature.
         bundledPlugin('Git4Idea')
@@ -335,7 +335,7 @@ tasks.named('runIde') {
     systemProperty 'idea.plugin.in.sandbox.mode', 'true'
 
     // Configure log output to console
-    systemProperty 'idea.log.debug.categories', '#com.github.claudecodegui'
+    systemProperty 'idea.log.debug.categories', '#com.github.agentgui'
 
     // Point bridge resolver to pre-extracted ai-bridge with node_modules (dev only)
     def stableBridge = layout.buildDirectory.dir("stable-ai-bridge").get().asFile

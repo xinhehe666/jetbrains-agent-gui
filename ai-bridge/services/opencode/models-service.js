@@ -85,7 +85,7 @@ export function runModelsViaTempRedirect(bin, env) {
   // mkdtemp gives an unpredictable, exclusively-owned directory (CWE-377): a
   // predictable tmpdir path would let another local process pre-create or
   // symlink the redirect target.
-  const tmpDir = mkdtempSync(join(tmpdir(), 'cc-gui-opencode-models-'));
+  const tmpDir = mkdtempSync(join(tmpdir(), 'agent-gui-opencode-models-'));
   const tmpFile = join(tmpDir, 'models.txt');
   try {
     const invocation = resolveCliSpawn(bin, ['models'], {

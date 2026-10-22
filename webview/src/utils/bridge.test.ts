@@ -35,9 +35,9 @@ describe('bridge navigation helpers', () => {
   });
 
   it('sends openClass for valid Java FQCN values', () => {
-    openClass('com.github.claudecodegui.handler.file.OpenFileHandler');
+    openClass('com.github.agentgui.handler.file.OpenFileHandler');
     expect(window.sendToJava).toHaveBeenCalledWith(
-      'open_class:com.github.claudecodegui.handler.file.OpenFileHandler',
+      'open_class:com.github.agentgui.handler.file.OpenFileHandler',
     );
   });
 

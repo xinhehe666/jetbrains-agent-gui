@@ -23,7 +23,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-gui-test-home-'));
+const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-gui-test-home-'));
 fs.mkdirSync(path.join(tempHome, '.codemoss'), { recursive: true });
 fs.writeFileSync(
   path.join(tempHome, '.codemoss', 'config.json'),

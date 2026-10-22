@@ -653,7 +653,7 @@ test('acquireRuntime rebuilds the runtime when the [1m] context toggle changes',
   // at a temp dir carrying a CLI-login config, mirroring api-config.test.js which
   // runs setupApiKey in a child for the same reason. The actual assertions live
   // in runtime-lifecycle.1m-toggle.child.mjs.
-  const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-gui-1m-toggle-'));
+  const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-gui-1m-toggle-'));
   try {
     fs.mkdirSync(path.join(tempHome, '.codemoss'), { recursive: true });
     fs.writeFileSync(

@@ -195,7 +195,7 @@ describe('useSettingsWindowCallbacks', () => {
       mode: 'customFile',
       effectiveMode: 'customFile',
       customFontPath: '/tmp/MapleMono.ttf',
-      fontFamily: 'CC GUI Custom',
+      fontFamily: 'Agent GUI Custom',
       fontSize: 14,
       lineSpacing: 1.35,
     }));
@@ -203,7 +203,7 @@ describe('useSettingsWindowCallbacks', () => {
     expect((deps as any).setUiFontConfig).toHaveBeenCalledWith(expect.objectContaining({
       mode: 'customFile',
       customFontPath: '/tmp/MapleMono.ttf',
-      fontFamily: 'CC GUI Custom',
+      fontFamily: 'Agent GUI Custom',
     }));
   });
 
@@ -216,7 +216,7 @@ describe('useSettingsWindowCallbacks', () => {
       mode: 'customFile',
       effectiveMode: 'customFile',
       customFontPath: '/tmp/FiraCode.ttf',
-      fontFamily: 'CC GUI Code Custom',
+      fontFamily: 'Agent GUI Code Custom',
       fontSize: 14,
       lineSpacing: 1.35,
     }));
@@ -224,7 +224,7 @@ describe('useSettingsWindowCallbacks', () => {
     expect((deps as any).setCodeFontConfig).toHaveBeenCalledWith(expect.objectContaining({
       mode: 'customFile',
       customFontPath: '/tmp/FiraCode.ttf',
-      fontFamily: 'CC GUI Code Custom',
+      fontFamily: 'Agent GUI Code Custom',
     }));
   });
 
@@ -237,7 +237,7 @@ describe('useSettingsWindowCallbacks', () => {
       mode: 'customFile',
       effectiveMode: 'customFile',
       customFontPath: '/tmp/MapleMono.ttf',
-      fontFamily: 'CC GUI Custom',
+      fontFamily: 'Agent GUI Custom',
       fontSize: 14,
       lineSpacing: 1.35,
       fontBase64: 'AAECA',
@@ -263,7 +263,7 @@ describe('useSettingsWindowCallbacks', () => {
       mode: 'customFile',
       effectiveMode: 'customFile',
       customFontPath: '/tmp/FiraCode.ttf',
-      fontFamily: 'CC GUI Code Custom',
+      fontFamily: 'Agent GUI Code Custom',
       fontSize: 14,
       lineSpacing: 1.35,
       fontBase64: 'AAECA',

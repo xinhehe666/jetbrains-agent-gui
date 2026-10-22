@@ -9,7 +9,7 @@ import path from 'node:path';
 // override here and share the same temp HOME across all tests in this file.
 const originalHome = process.env.HOME;
 const originalUserProfile = process.env.USERPROFILE;
-const tempHomeRaw = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-gui-mcp-config-'));
+const tempHomeRaw = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-gui-mcp-config-'));
 const tempHome = fs.realpathSync(tempHomeRaw);
 process.env.HOME = tempHome;
 process.env.USERPROFILE = tempHome;
@@ -123,7 +123,7 @@ test('loadMcpServersConfigAsRecord expands ${VAR} from .claude/settings.local.js
 });
 
 test('loadMcpServersConfigAsRecord falls back to process env then leaves unresolved placeholders as-is', async () => {
-  process.env.CCG_TEST_MCP_FALLBACK = 'from-process-env';
+  process.env.AGENTGUI_TEST_MCP_FALLBACK = 'from-process-env';
   const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ccg-mcp-env2-'));
   try {
     writeConfig({
@@ -132,8 +132,8 @@ test('loadMcpServersConfigAsRecord falls back to process env then leaves unresol
           command: 'docker',
           args: ['run', '-i', '--rm', 'some-mcp'],
           env: {
-            FROM_PROCESS: '${CCG_TEST_MCP_FALLBACK}',
-            UNRESOLVED: '${CCG_TEST_MCP_MISSING_VAR}'
+            FROM_PROCESS: '${AGENTGUI_TEST_MCP_FALLBACK}',
+            UNRESOLVED: '${AGENTGUI_TEST_MCP_MISSING_VAR}'
           }
         }
       }
@@ -143,9 +143,9 @@ test('loadMcpServersConfigAsRecord falls back to process env then leaves unresol
     assert.ok(result, 'expected a non-null record');
     assert.equal(result.mixed.env.FROM_PROCESS, 'from-process-env');
     // Unresolvable placeholders stay literal so misconfig is visible
-    assert.equal(result.mixed.env.UNRESOLVED, '${CCG_TEST_MCP_MISSING_VAR}');
+    assert.equal(result.mixed.env.UNRESOLVED, '${AGENTGUI_TEST_MCP_MISSING_VAR}');
   } finally {
-    delete process.env.CCG_TEST_MCP_FALLBACK;
+    delete process.env.AGENTGUI_TEST_MCP_FALLBACK;
     fs.rmSync(projectDir, { recursive: true, force: true });
   }
 });

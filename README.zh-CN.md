@@ -4,13 +4,11 @@
 
 > 基于 CC GUI 的分支（原名：Claude Code GUI）
 
-<img width="120" alt="Image" src="./docs/images/idea-claude-code-gui-logo.png" />
+<img width="120" alt="Image" src="./docs/images/agent-gui-logo.png" />
 
 **简体中文** · [English](./README.md)
 
-<a href="https://trendshift.io/repositories/24968" target="_blank"><img src="https://trendshift.io/api/badge/repositories/24968" alt="zhukunpenglinyutong%2Fjetbrains-cc-gui | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
-
-![][github-contributors-shield] ![][github-forks-shield] ![][github-stars-shield] ![][github-issues-shield] ![][github-mit]
+![][github-issues-shield] ![][github-mit]
 
 </div>
 
@@ -24,7 +22,9 @@
 
 ## 插件下载
 
-[上游 CC GUI（Claude, Codex and More）Marketplace 页面](https://plugins.jetbrains.com/plugin/29342-cc-gui-claude-or-codex-)
+本分支还没有独立的 Marketplace 页面，可以[从源码构建](#本地开发调试)。
+
+上游插件仍可在 [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/29342-cc-gui-claude-or-codex-) 下载。
 
 ---
 
@@ -123,54 +123,11 @@ MIT
 
 ---
 
-## 贡献者列表
+## 上游项目
 
-感谢所有帮助 IDEA-Claude-Code-GUI 变得更好的贡献者！
-
-<a href="https://github.com/zhukunpenglinyutong/jetbrains-cc-gui/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=zhukunpenglinyutong/jetbrains-cc-gui" alt="Contributors" />
-</a>
-
----
-
-## 赞助支持
-
-如果这个项目对你有帮助，想请作者吃顿肯德基（KFC）或者喝杯咖啡，都是可以的~
-
-[查看赞助者列表 →](./SPONSORS.md)
-
----
-
-## AtomGit
-
-https://atomgit.com/zhukunpenglinyutong/idea-claude-code-gui
-
----
-
-## 友链
-
-感谢 [LINUX DO](https://linux.do/) 用户的支持与反馈
-
-感谢[AtomGit](https://atomgit.com/zhukunpenglinyutong/idea-claude-code-gui)平台G-Star认证
-
----
-
-## 致谢
-
-最近有很多博主自发推荐本项目，心中十分感激，再次感谢《沉默的王二》《macrozheng》《JavaGuide》《Java知音》《鲲鹏talk 公众号》《程序员青戈》等博主推荐本项目，我会继续努力迭代，让大家用起来更舒适。
-
----
-
-## Star History
-
-[![Star History](https://star-history.dera.page/svg?repos=zhukunpenglinyutong/jetbrains-cc-gui&type=date&legend=top-left)](https://star-history.dera.page/#zhukunpenglinyutong/jetbrains-cc-gui&type=date&legend=top-left)
+Agent GUI 是 [CC GUI](https://github.com/zhukunpenglinyutong/jetbrains-cc-gui)（原名 Claude Code GUI）的独立分支。感谢上游维护者与所有贡献者。上游项目的 Marketplace 页面、交流群、赞助与支持渠道仍以上游仓库为准。
 
 <!-- LINK GROUP -->
 
-[github-contributors-shield]: https://img.shields.io/github/contributors/zhukunpenglinyutong/idea-claude-code-gui?color=c4f042&labelColor=black&style=flat-square
-[github-forks-shield]: https://img.shields.io/github/forks/zhukunpenglinyutong/idea-claude-code-gui?color=8ae8ff&labelColor=black&style=flat-square
-[github-issues-link]: https://github.com/zhukunpenglinyutong/idea-claude-code-gui/issues
-[github-issues-shield]: https://img.shields.io/github/issues/zhukunpenglinyutong/idea-claude-code-gui?color=ff80eb&labelColor=black&style=flat-square
-[github-license-link]: https://github.com/zhukunpenglinyutong/idea-claude-code-gui/blob/main/LICENSE
-[github-stars-shield]: https://img.shields.io/github/stars/zhukunpenglinyutong/idea-claude-code-gui?color=ffcb47&labelColor=black&style=flat-square
+[github-issues-shield]: https://img.shields.io/github/issues/xinhehe666/jetbrains-cc-gui?color=ff80eb&labelColor=black&style=flat-square
 [github-mit]: https://img.shields.io/badge/github-MIT-blue?logo=github

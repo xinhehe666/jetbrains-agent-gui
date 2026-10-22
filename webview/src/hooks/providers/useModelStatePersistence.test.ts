@@ -76,19 +76,19 @@ describe('useModelStatePersistence — boot sync does not clobber the persisted 
     localStorage.clear();
     sendBridgeEventMock.mockClear();
     (window as unknown as { sendToJava?: unknown }).sendToJava = () => {};
-    window.__CCGUI_PAGE_CONTEXT_READY__ = true;
-    window.__CCGUI_PAGE_LOAD_KIND__ = 'initial_load';
-    window.__CCGUI_RECOVERY_RELOAD__ = false;
+    window.__AGENTGUI_PAGE_CONTEXT_READY__ = true;
+    window.__AGENTGUI_PAGE_LOAD_KIND__ = 'initial_load';
+    window.__AGENTGUI_RECOVERY_RELOAD__ = false;
     vi.useFakeTimers();
   });
 
   afterEach(() => {
     vi.useRealTimers();
     delete (window as unknown as { sendToJava?: unknown }).sendToJava;
-    delete window.__CCGUI_PAGE_CONTEXT_READY__;
-    delete window.__CCGUI_PAGE_LOAD_KIND__;
-    delete window.__CCGUI_RECOVERY_RELOAD__;
-    delete window.__CCGUI_RECOVERY_STATE_APPLIED__;
+    delete window.__AGENTGUI_PAGE_CONTEXT_READY__;
+    delete window.__AGENTGUI_PAGE_LOAD_KIND__;
+    delete window.__AGENTGUI_RECOVERY_RELOAD__;
+    delete window.__AGENTGUI_RECOVERY_STATE_APPLIED__;
     delete window.__INITIAL_TAB_PROVIDER__;
     delete window.__INITIAL_TAB_MODEL__;
   });
@@ -165,8 +165,8 @@ describe('useModelStatePersistence — boot sync does not clobber the persisted 
   });
 
   it('keeps frontend boot synchronization enabled for a pre-ready startup retry', () => {
-    window.__CCGUI_PAGE_LOAD_KIND__ = 'startup_retry';
-    window.__CCGUI_RECOVERY_RELOAD__ = false;
+    window.__AGENTGUI_PAGE_LOAD_KIND__ = 'startup_retry';
+    window.__AGENTGUI_RECOVERY_RELOAD__ = false;
 
     renderHook(() => useModelStatePersistence(makeOptions()));
     vi.advanceTimersByTime(200);
@@ -177,8 +177,8 @@ describe('useModelStatePersistence — boot sync does not clobber the persisted 
   });
 
   it('does not echo the stale HTML provider or model during watchdog recovery', () => {
-    window.__CCGUI_RECOVERY_RELOAD__ = true;
-    window.__CCGUI_RECOVERY_STATE_APPLIED__ = false;
+    window.__AGENTGUI_RECOVERY_RELOAD__ = true;
+    window.__AGENTGUI_RECOVERY_STATE_APPLIED__ = false;
     window.__INITIAL_TAB_PROVIDER__ = 'codex';
     window.__INITIAL_TAB_MODEL__ = 'gpt-5.6-sol';
 
@@ -192,8 +192,8 @@ describe('useModelStatePersistence — boot sync does not clobber the persisted 
   });
 
   it('waits for runtime page context and authoritative recovery state before persisting', () => {
-    window.__CCGUI_PAGE_CONTEXT_READY__ = false;
-    delete window.__CCGUI_RECOVERY_RELOAD__;
+    window.__AGENTGUI_PAGE_CONTEXT_READY__ = false;
+    delete window.__AGENTGUI_RECOVERY_RELOAD__;
 
     renderHook(() => useModelStatePersistence(makeOptions()));
     expect(localStorage.getItem('model-selection-state')).toBeNull();
@@ -201,12 +201,12 @@ describe('useModelStatePersistence — boot sync does not clobber the persisted 
     act(() => vi.advanceTimersByTime(100));
     expect(localStorage.getItem('model-selection-state')).toBeNull();
 
-    window.__CCGUI_PAGE_CONTEXT_READY__ = true;
-    window.__CCGUI_RECOVERY_RELOAD__ = true;
+    window.__AGENTGUI_PAGE_CONTEXT_READY__ = true;
+    window.__AGENTGUI_RECOVERY_RELOAD__ = true;
     act(() => vi.advanceTimersByTime(100));
     expect(localStorage.getItem('model-selection-state')).toBeNull();
 
-    window.__CCGUI_RECOVERY_STATE_APPLIED__ = true;
+    window.__AGENTGUI_RECOVERY_STATE_APPLIED__ = true;
     act(() => vi.advanceTimersByTime(100));
     expect(JSON.parse(localStorage.getItem('model-selection-state') || '{}').provider).toBe('claude');
   });
@@ -217,19 +217,19 @@ describe('useModelStatePersistence — retired model migration', () => {
     localStorage.clear();
     sendBridgeEventMock.mockClear();
     (window as unknown as { sendToJava?: unknown }).sendToJava = () => {};
-    window.__CCGUI_PAGE_CONTEXT_READY__ = true;
-    window.__CCGUI_PAGE_LOAD_KIND__ = 'initial_load';
-    window.__CCGUI_RECOVERY_RELOAD__ = false;
+    window.__AGENTGUI_PAGE_CONTEXT_READY__ = true;
+    window.__AGENTGUI_PAGE_LOAD_KIND__ = 'initial_load';
+    window.__AGENTGUI_RECOVERY_RELOAD__ = false;
     vi.useFakeTimers();
   });
 
   afterEach(() => {
     vi.useRealTimers();
     delete (window as unknown as { sendToJava?: unknown }).sendToJava;
-    delete window.__CCGUI_PAGE_CONTEXT_READY__;
-    delete window.__CCGUI_PAGE_LOAD_KIND__;
-    delete window.__CCGUI_RECOVERY_RELOAD__;
-    delete window.__CCGUI_RECOVERY_STATE_APPLIED__;
+    delete window.__AGENTGUI_PAGE_CONTEXT_READY__;
+    delete window.__AGENTGUI_PAGE_LOAD_KIND__;
+    delete window.__AGENTGUI_RECOVERY_RELOAD__;
+    delete window.__AGENTGUI_RECOVERY_STATE_APPLIED__;
     delete (window as unknown as { __INITIAL_TAB_PROVIDER__?: unknown }).__INITIAL_TAB_PROVIDER__;
     delete (window as unknown as { __INITIAL_TAB_MODEL__?: unknown }).__INITIAL_TAB_MODEL__;
   });
@@ -312,19 +312,19 @@ describe('useModelStatePersistence — CLI provider persistence', () => {
     localStorage.clear();
     sendBridgeEventMock.mockClear();
     (window as unknown as { sendToJava?: unknown }).sendToJava = () => {};
-    window.__CCGUI_PAGE_CONTEXT_READY__ = true;
-    window.__CCGUI_PAGE_LOAD_KIND__ = 'initial_load';
-    window.__CCGUI_RECOVERY_RELOAD__ = false;
+    window.__AGENTGUI_PAGE_CONTEXT_READY__ = true;
+    window.__AGENTGUI_PAGE_LOAD_KIND__ = 'initial_load';
+    window.__AGENTGUI_RECOVERY_RELOAD__ = false;
     vi.useFakeTimers();
   });
 
   afterEach(() => {
     vi.useRealTimers();
     delete (window as unknown as { sendToJava?: unknown }).sendToJava;
-    delete window.__CCGUI_PAGE_CONTEXT_READY__;
-    delete window.__CCGUI_PAGE_LOAD_KIND__;
-    delete window.__CCGUI_RECOVERY_RELOAD__;
-    delete window.__CCGUI_RECOVERY_STATE_APPLIED__;
+    delete window.__AGENTGUI_PAGE_CONTEXT_READY__;
+    delete window.__AGENTGUI_PAGE_LOAD_KIND__;
+    delete window.__AGENTGUI_RECOVERY_RELOAD__;
+    delete window.__AGENTGUI_RECOVERY_STATE_APPLIED__;
     delete (window as unknown as { __INITIAL_TAB_PROVIDER__?: unknown }).__INITIAL_TAB_PROVIDER__;
     delete (window as unknown as { __INITIAL_TAB_MODEL__?: unknown }).__INITIAL_TAB_MODEL__;
   });
@@ -480,19 +480,19 @@ describe('useModelStatePersistence — codex dynamic catalog models', () => {
     localStorage.clear();
     sendBridgeEventMock.mockClear();
     (window as unknown as { sendToJava?: unknown }).sendToJava = () => {};
-    window.__CCGUI_PAGE_CONTEXT_READY__ = true;
-    window.__CCGUI_PAGE_LOAD_KIND__ = 'initial_load';
-    window.__CCGUI_RECOVERY_RELOAD__ = false;
+    window.__AGENTGUI_PAGE_CONTEXT_READY__ = true;
+    window.__AGENTGUI_PAGE_LOAD_KIND__ = 'initial_load';
+    window.__AGENTGUI_RECOVERY_RELOAD__ = false;
     vi.useFakeTimers();
   });
 
   afterEach(() => {
     vi.useRealTimers();
     delete (window as unknown as { sendToJava?: unknown }).sendToJava;
-    delete window.__CCGUI_PAGE_CONTEXT_READY__;
-    delete window.__CCGUI_PAGE_LOAD_KIND__;
-    delete window.__CCGUI_RECOVERY_RELOAD__;
-    delete window.__CCGUI_RECOVERY_STATE_APPLIED__;
+    delete window.__AGENTGUI_PAGE_CONTEXT_READY__;
+    delete window.__AGENTGUI_PAGE_LOAD_KIND__;
+    delete window.__AGENTGUI_RECOVERY_RELOAD__;
+    delete window.__AGENTGUI_RECOVERY_STATE_APPLIED__;
     delete (window as unknown as { __INITIAL_TAB_PROVIDER__?: unknown }).__INITIAL_TAB_PROVIDER__;
     delete (window as unknown as { __INITIAL_TAB_MODEL__?: unknown }).__INITIAL_TAB_MODEL__;
   });

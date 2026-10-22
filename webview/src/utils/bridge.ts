@@ -1,7 +1,7 @@
 import { isJavaFqcnCandidate, normalizeFileNavigationTarget, parseFileLinkTarget } from './linkify';
 
 /** Canonical GitHub repository URL, used by star/promo banners across the UI. */
-export const GITHUB_REPO_URL = 'https://github.com/zhukunpenglinyutong/jetbrains-cc-gui';
+export const GITHUB_REPO_URL = 'https://github.com/xinhehe666/jetbrains-cc-gui';
 
 const SAFE_BROWSER_PROTOCOLS = /^(https?|mailto):/i;
 

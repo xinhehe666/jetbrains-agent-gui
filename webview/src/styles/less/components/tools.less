@@ -196,7 +196,7 @@
     border: 1px solid var(--border-primary);
     border-radius: 6px;
     padding: 10px 12px;
-    font-family: var(--cc-gui-code-font-family, var(--idea-editor-font-family, 'JetBrains Mono', 'Consolas', monospace));
+    font-family: var(--agent-gui-code-font-family, var(--idea-editor-font-family, 'JetBrains Mono', 'Consolas', monospace));
     font-size: 13px;
     color: var(--text-primary);
     white-space: pre-wrap;
@@ -205,7 +205,7 @@
 
 .bash-output-block {
     margin-top: 8px;
-    font-family: var(--cc-gui-code-font-family, var(--idea-editor-font-family, 'JetBrains Mono', 'Consolas', monospace));
+    font-family: var(--agent-gui-code-font-family, var(--idea-editor-font-family, 'JetBrains Mono', 'Consolas', monospace));
     font-size: 12px;
     white-space: pre-wrap;
     display: flex;
@@ -222,7 +222,7 @@
        `* { font-family }` in base.less directly matches this <span> and would
        otherwise win over the code font merely inherited from .bash-output-block
        (a directly-matched rule always beats an inherited value). */
-    font-family: var(--cc-gui-code-font-family, var(--idea-editor-font-family, 'JetBrains Mono', 'Consolas', monospace));
+    font-family: var(--agent-gui-code-font-family, var(--idea-editor-font-family, 'JetBrains Mono', 'Consolas', monospace));
 }
 
 .bash-output-block.normal {
@@ -475,7 +475,7 @@
 }
 
 .bash-timeline-description-command {
-    font-family: var(--cc-gui-code-font-family, var(--idea-editor-font-family, 'JetBrains Mono', 'Consolas', monospace));
+    font-family: var(--agent-gui-code-font-family, var(--idea-editor-font-family, 'JetBrains Mono', 'Consolas', monospace));
 }
 
 /* 展开的详情 */
@@ -725,7 +725,7 @@
 .report-finding-line {
     flex: 0 0 auto;
     color: var(--text-secondary);
-    font-family: var(--cc-gui-code-font-family, var(--idea-editor-font-family, 'JetBrains Mono', 'Consolas', monospace));
+    font-family: var(--agent-gui-code-font-family, var(--idea-editor-font-family, 'JetBrains Mono', 'Consolas', monospace));
 }
 
 .report-finding-toggle {

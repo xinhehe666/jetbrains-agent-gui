@@ -1,0 +1,465 @@
+package com.github.agentgui.provider.codex;
+
+import com.github.agentgui.cache.SessionIndexCache;
+import com.github.agentgui.cache.SessionIndexManager;
+import com.github.agentgui.provider.CustomPricingProvider;
+import com.github.agentgui.provider.codex.CodexHistoryReader.CodexMessage;
+import com.github.agentgui.provider.codex.CodexHistoryReader.SessionInfo;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
+import java.io.IOException;
+import java.lang.reflect.Type;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.Instant;
+import java.util.Comparator;
+import java.util.List;
+
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
+
+public class CodexHistoryReaderRefactorTest {
+
+    private final Gson gson = new Gson();
+
+    private Path pricingIsolationDir;
+    private Path indexCacheIsolationDir;
+
+    /**
+     * The aggregator consults the CustomPricingProvider singleton, which reads the developer's
+     * real ~/.codemoss/config.json. Point it at an empty config so the exact-cost assertions
+     * below stay hermetic regardless of local custom pricing.
+     *
+     * The SessionIndexCache memory cache keys the "__all__" entry without a sessionsDir
+     * dimension, so one test's scan would otherwise be served to the next; clear it around
+     * each test.
+     */
+    @Before
+    public void isolateCustomPricingFromLocalConfig() throws IOException {
+        pricingIsolationDir = Files.createTempDirectory("codex-history-pricing-isolation");
+        CustomPricingProvider.setInstanceForTests(
+                CustomPricingProvider.createForTests(pricingIsolationDir.resolve("config.json")));
+        indexCacheIsolationDir = Files.createTempDirectory("codex-history-index-cache");
+        SessionIndexCache.getInstance().clearAll();
+    }
+
+    @After
+    public void restoreCustomPricingSingleton() throws IOException {
+        CustomPricingProvider.setInstanceForTests(null);
+        SessionIndexCache.getInstance().clearAll();
+        Files.deleteIfExists(pricingIsolationDir);
+        deleteDirectory(indexCacheIsolationDir);
+    }
+
+    @Test
+    public void parserBuildsSessionInfoFromSessionFile() throws IOException {
+        Path sessionsDir = Files.createTempDirectory("codex-history-parser");
+        try {
+            Path sessionFile = writeSessionFile(
+                    sessionsDir,
+                    "session-1",
+                    line("2026-03-10T10:00:00Z", "session_meta", "{\"cwd\":\"/workspace/demo\",\"timestamp\":\"2026-03-10T10:00:00Z\"}"),
+                    line("2026-03-10T10:01:00Z", "event_msg", "{\"type\":\"user_message\",\"message\":\"<command-name>review</command-name>\\n请帮我检查一下这个文件的改动是否安全\"}"),
+                    line("2026-03-10T10:02:00Z", "response_item", "{\"type\":\"function_call\",\"name\":\"shell_command\",\"arguments\":\"{\\\"command\\\":\\\"pwd\\\"}\"}"),
+                    line("2026-03-10T10:03:00Z", "response_item", "{\"type\":\"message\"}")
+            );
+
+            CodexHistoryParser parser = new CodexHistoryParser(new Gson());
+
+            SessionInfo session = parser.parseSessionFile(sessionFile);
+
+            assertNotNull(session);
+            assertEquals("session-1", session.sessionId);
+            assertEquals("/workspace/demo", session.cwd);
+            assertEquals(2, session.messageCount);
+            assertEquals(Instant.parse("2026-03-10T10:00:00Z").toEpochMilli(), session.firstTimestamp);
+            assertEquals(Instant.parse("2026-03-10T10:03:00Z").toEpochMilli(), session.lastTimestamp);
+            assertTrue(session.title.contains("review"));
+            assertTrue(session.title.endsWith("..."));
+            assertTrue(parser.isValidSession(session));
+        } finally {
+            deleteDirectory(sessionsDir);
+        }
+    }
+
+    @Test
+    public void parserBuildsSessionInfoFromResponseItemUserMessage() throws IOException {
+        Path sessionsDir = Files.createTempDirectory("codex-history-parser-response-item");
+        try {
+            Path sessionFile = writeSessionFile(
+                    sessionsDir,
+                    "session-response-item",
+                    line("2026-08-21T12:40:29Z", "session_meta",
+                            "{\"id\":\"01a0229e-d4d9-7850-876d-1a3b36867785\",\"cwd\":\"/workspace/demo\",\"timestamp\":\"2026-08-21T12:40:29Z\"}"),
+                    line("2026-08-21T12:40:30Z", "event_msg",
+                            "{\"type\":\"task_started\"}"),
+                    line("2026-08-21T12:40:31Z", "response_item",
+                            "{\"type\":\"message\",\"role\":\"user\",\"content\":[{\"type\":\"input_text\",\"text\":\"hello from Codex 0.149\"}]}"),
+                    line("2026-08-21T12:40:32Z", "response_item",
+                            "{\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"hi\"}]}")
+            );
+
+            CodexHistoryParser parser = new CodexHistoryParser(new Gson());
+            SessionInfo session = parser.parseSessionFile(sessionFile);
+
+            assertNotNull(session);
+            assertEquals("01a0229e-d4d9-7850-876d-1a3b36867785", session.sessionId);
+            assertEquals("/workspace/demo", session.cwd);
+            assertTrue(session.messageCount >= 1);
+            assertTrue(session.title.contains("hello from Codex 0.149"));
+            assertTrue(parser.isValidSession(session));
+        } finally {
+            deleteDirectory(sessionsDir);
+        }
+    }
+
+    @Test
+    public void parserSkipsInstructionPayloadsAndUsesRealUserPrompt() throws IOException {
+        Path sessionsDir = Files.createTempDirectory("codex-history-parser-skip-instructions");
+        try {
+            Path sessionFile = writeSessionFile(
+                    sessionsDir,
+                    "session-skip-instructions",
+                    line("2026-08-21T12:40:29Z", "session_meta",
+                            "{\"id\":\"01a0229e-d4d9-7850-876d-1a3b36867785\",\"cwd\":\"/workspace/demo\"}"),
+                    line("2026-08-21T12:40:30Z", "response_item",
+                            "{\"type\":\"message\",\"role\":\"user\",\"content\":[{\"type\":\"input_text\",\"text\":\"<agents-instructions>Global Instructions</agents-instructions>\"}]}"),
+                    line("2026-08-21T12:40:31Z", "response_item",
+                            "{\"type\":\"message\",\"role\":\"user\",\"content\":[{\"type\":\"input_text\",\"text\":\"<skill>name: plan</skill>\"}]}"),
+                    line("2026-08-21T12:40:32Z", "response_item",
+                            "{\"type\":\"message\",\"role\":\"user\",\"content\":[{\"type\":\"input_text\",\"text\":\"# AGENTS.md instructions\\nYOU ARE AN AUTONOMOUS CODING AGENT.\"}]}"),
+                    line("2026-08-21T12:40:33Z", "response_item",
+                            "{\"type\":\"message\",\"role\":\"user\",\"content\":[{\"type\":\"input_text\",\"text\":\"修复 Codex 历史会话不显示\"}]}")
+            );
+
+            CodexHistoryParser parser = new CodexHistoryParser(new Gson());
+            SessionInfo session = parser.parseSessionFile(sessionFile);
+
+            assertNotNull(session);
+            assertEquals("修复 Codex 历史会话不显示", session.title);
+            assertTrue(parser.isValidSession(session));
+        } finally {
+            deleteDirectory(sessionsDir);
+        }
+    }
+
+    @Test
+    public void parserSkipsSubagentSession() throws IOException {
+        Path sessionsDir = Files.createTempDirectory("codex-history-subagent-parser");
+        try {
+            Path sessionFile = writeSessionFile(
+                    sessionsDir,
+                    "session-subagent",
+                    line("2026-03-10T10:00:00Z", "session_meta",
+                            "{\"cwd\":\"/workspace/demo\",\"source\":{\"subagent\":{\"thread_spawn\":{"
+                                    + "\"parent_thread_id\":\"session-parent\",\"depth\":1}}}}"),
+                    line("2026-03-10T10:01:00Z", "event_msg",
+                            "{\"type\":\"user_message\",\"message\":\"Inherited parent context\"}"),
+                    line("2026-03-10T10:02:00Z", "response_item", "{\"type\":\"message\"}")
+            );
+
+            CodexHistoryParser parser = new CodexHistoryParser(new Gson());
+
+            assertNull(parser.parseSessionFile(sessionFile));
+        } finally {
+            deleteDirectory(sessionsDir);
+        }
+    }
+
+    @Test
+    public void sessionServiceTransformsFileViewingShellCommandToRead() throws IOException {
+        Path sessionsDir = Files.createTempDirectory("codex-history-messages");
+        try {
+            writeSessionFile(
+                    sessionsDir,
+                    "session-2",
+                    line("2026-03-10T10:00:00Z", "response_item", "{\"type\":\"function_call\",\"name\":\"shell_command\",\"arguments\":\"{\\\"command\\\":\\\"sed -n '1,20p' src/App.tsx\\\"}\"}"),
+                    line("2026-03-10T10:01:00Z", "response_item", "{\"type\":\"function_call\",\"name\":\"shell_command\",\"arguments\":\"{\\\"command\\\":\\\"npm test\\\"}\"}")
+            );
+
+            CodexHistorySessionService service = new CodexHistorySessionService(sessionsDir, gson);
+            Type listType = new TypeToken<List<CodexMessage>>() {}.getType();
+
+            List<CodexMessage> messages = gson.fromJson(service.getSessionMessagesAsJson("session-2"), listType);
+
+            assertEquals(2, messages.size());
+            assertEquals("read", messages.get(0).payload.get("name").getAsString());
+            assertEquals("shell_command", messages.get(1).payload.get("name").getAsString());
+        } finally {
+            deleteDirectory(sessionsDir);
+        }
+    }
+
+    @Test
+    public void sessionServiceReadsConcatenatedJsonObjectsFromOnePhysicalLine() throws IOException {
+        Path sessionsDir = Files.createTempDirectory("codex-history-concatenated");
+        try {
+            String first = line("2026-03-10T10:00:00Z", "event_msg",
+                    "{\"type\":\"user_message\",\"message\":\"first\"}");
+            String second = line("2026-03-10T10:01:00Z", "response_item",
+                    "{\"type\":\"message\",\"role\":\"assistant\",\"content\":[]}");
+            writeSessionFile(sessionsDir, "session-concatenated", first + second);
+
+            CodexHistorySessionService service = new CodexHistorySessionService(sessionsDir, gson);
+            Type listType = new TypeToken<List<CodexMessage>>() {}.getType();
+
+            List<CodexMessage> messages = gson.fromJson(
+                    service.getSessionMessagesAsJson("session-concatenated"), listType);
+
+            assertEquals(2, messages.size());
+            assertEquals("event_msg", messages.get(0).type);
+            assertEquals("response_item", messages.get(1).type);
+        } finally {
+            deleteDirectory(sessionsDir);
+        }
+    }
+
+    @Test
+    public void indexServiceDeduplicatesSessionsByCanonicalSessionId() {
+        SessionInfo first = new SessionInfo();
+        first.sessionId = "thread-1";
+        first.title = "older";
+        first.messageCount = 10;
+        first.firstTimestamp = Instant.parse("2026-03-10T10:00:00Z").toEpochMilli();
+        first.lastTimestamp = Instant.parse("2026-03-10T10:10:00Z").toEpochMilli();
+        first.cwd = "/workspace/demo";
+
+        SessionInfo second = new SessionInfo();
+        second.sessionId = "thread-1";
+        second.title = "newer";
+        second.messageCount = 15;
+        second.firstTimestamp = Instant.parse("2026-03-10T09:55:00Z").toEpochMilli();
+        second.lastTimestamp = Instant.parse("2026-03-10T10:20:00Z").toEpochMilli();
+        second.cwd = "/workspace/demo";
+
+        SessionInfo third = new SessionInfo();
+        third.sessionId = "thread-2";
+        third.title = "another";
+        third.messageCount = 3;
+        third.firstTimestamp = Instant.parse("2026-03-11T08:00:00Z").toEpochMilli();
+        third.lastTimestamp = Instant.parse("2026-03-11T08:05:00Z").toEpochMilli();
+        third.cwd = "/workspace/other";
+
+        List<SessionInfo> deduplicated =
+                CodexHistoryDeduplicator.deduplicate(List.of(first, second, third));
+
+        assertEquals(2, deduplicated.size());
+        assertEquals("thread-2", deduplicated.get(0).sessionId);
+        assertEquals("thread-1", deduplicated.get(1).sessionId);
+        assertEquals("newer", deduplicated.get(1).title);
+        assertEquals(15, deduplicated.get(1).messageCount);
+        assertEquals(Instant.parse("2026-03-10T09:55:00Z").toEpochMilli(), deduplicated.get(1).firstTimestamp);
+        assertEquals(Instant.parse("2026-03-10T10:20:00Z").toEpochMilli(), deduplicated.get(1).lastTimestamp);
+    }
+
+    @Test
+    public void historyReaderReadsSessionsEvenWhenLocalConfigAuthorizationIsFalse() throws IOException {
+        Path sessionsDir = Files.createTempDirectory("codex-history-reader");
+        try {
+            writeSessionFile(
+                    sessionsDir.resolve("2026/03/10"),
+                    "session-5",
+                    line("2026-03-10T10:00:00Z", "session_meta", "{\"cwd\":\"/workspace/demo\",\"timestamp\":\"2026-03-10T10:00:00Z\"}"),
+                    line("2026-03-10T10:01:00Z", "event_msg", "{\"type\":\"user_message\",\"message\":\"Review this regression\"}"),
+                    line("2026-03-10T10:02:00Z", "response_item", "{\"type\":\"message\"}")
+            );
+
+            CodexHistoryReader reader = createReaderWithLocalConfigAuthorization(sessionsDir, false);
+
+            List<SessionInfo> sessions = reader.readAllSessions();
+
+            assertEquals(1, sessions.size());
+            assertEquals("session-5", sessions.get(0).sessionId);
+        } finally {
+            deleteDirectory(sessionsDir);
+        }
+    }
+
+    @Test
+    public void historyReaderIndexesRolloutSessionsWithoutEventMsgUserMessage() throws IOException {
+        Path sessionsDir = Files.createTempDirectory("codex-history-reader-rollout");
+        try {
+            writeSessionFile(
+                    sessionsDir.resolve("2026/08/21"),
+                    "rollout-2026-08-21T12-40-29-01a0229e-d4d9-7850-876d-1a3b36867785",
+                    line("2026-08-21T12:40:29Z", "session_meta",
+                            "{\"id\":\"01a0229e-d4d9-7850-876d-1a3b36867785\",\"cwd\":\"/workspace/demo\",\"timestamp\":\"2026-08-21T12:40:29Z\"}"),
+                    line("2026-08-21T12:40:31Z", "response_item",
+                            "{\"type\":\"message\",\"role\":\"user\",\"content\":[{\"type\":\"input_text\",\"text\":\"hello\"}]}"),
+                    line("2026-08-21T12:40:32Z", "response_item",
+                            "{\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"hi\"}]}")
+            );
+
+            CodexHistoryIndexService service = new CodexHistoryIndexService(sessionsDir, new CodexHistoryParser(gson));
+            CodexHistoryIndexService.ScanResult result = service.incrementalScanLite(new SessionIndexManager.ProjectIndex());
+
+            assertEquals(1, result.sessions().size());
+            assertEquals("01a0229e-d4d9-7850-876d-1a3b36867785", result.sessions().get(0).sessionId);
+            assertTrue(result.sessions().get(0).title.contains("hello"));
+        } finally {
+            deleteDirectory(sessionsDir);
+        }
+    }
+
+    @Test
+    public void historyReaderReadsSessionMessagesEvenWhenLocalConfigAuthorizationIsFalse() throws IOException {
+        Path sessionsDir = Files.createTempDirectory("codex-history-reader-messages");
+        try {
+            writeSessionFile(
+                    sessionsDir.resolve("2026/03/10"),
+                    "session-6",
+                    line("2026-03-10T10:00:00Z", "response_item", "{\"type\":\"function_call\",\"name\":\"shell_command\",\"arguments\":\"{\\\"command\\\":\\\"pwd\\\"}\"}")
+            );
+
+            CodexHistoryReader reader = createReaderWithLocalConfigAuthorization(sessionsDir, false);
+            Type listType = new TypeToken<List<CodexMessage>>() {}.getType();
+
+            List<CodexMessage> messages = gson.fromJson(reader.getSessionMessagesAsJson("session-6"), listType);
+
+            assertEquals(1, messages.size());
+            assertEquals("read", messages.get(0).payload.get("name").getAsString());
+        } finally {
+            deleteDirectory(sessionsDir);
+        }
+    }
+
+    /** Source observers see exactly the bounded UTF-8 bytes without mutating or bypassing protected records. */
+    @Test
+    public void sourceObserverPreservesByteRangesAndPrivacyFiltering() throws Exception {
+        Path sessionsDir = Files.createTempDirectory("codex-history-source-bytes");
+        try {
+            String prefix = "outside this read\n";
+            String body = line("2026-10-12T00:00:00Z", "event_msg",
+                    "{\"type\":\"user_message\",\"message\":\"" + "中文😀".repeat(3000) + "\"}") + "\n"
+                    + line("2026-10-12T00:00:01Z", "response_item",
+                    "{\"type\":\"function_call_output\",\"call_id\":\"source-observer-call\","
+                            + "\"output\":{\"answers\":{\"unknown\":\"synthetic-secret\"}}}") + "\n";
+            Path source = sessionsDir.resolve("source-observer.jsonl");
+            Files.writeString(source, prefix + body + "outside the bounded end\n");
+            byte[] expected = body.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            int offset = prefix.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
+            var observed = new java.io.ByteArrayOutputStream();
+            var records = new java.util.ArrayList<com.google.gson.JsonObject>();
+            CodexHistoryReader reader = new CodexHistoryReader(sessionsDir, this.gson);
+            int count = reader.forEachSessionMessage("source-observer", source, offset, offset + expected.length,
+                    () -> true, records::add, bytes -> {
+                        assertTrue(bytes.isReadOnly());
+                        assertThrows(java.nio.ReadOnlyBufferException.class, () -> bytes.put(0, (byte) 'X'));
+                        byte[] chunk = new byte[bytes.remaining()];
+                        bytes.get(chunk);
+                        observed.writeBytes(chunk);
+                    });
+            assertEquals(2, count);
+            assertArrayEquals(expected, observed.toByteArray());
+            assertEquals("中文😀".repeat(3000), records.get(0).getAsJsonObject("payload").get("message").getAsString());
+            assertFalse(records.get(1).toString().contains("synthetic-secret"));
+        } finally {
+            this.deleteDirectory(sessionsDir);
+        }
+    }
+
+    /** Nested consumers must not merge another session's bytes into the enclosing source fingerprint. */
+    @Test
+    public void nestedReadsKeepTheirSourceObserversSeparate() throws Exception {
+        Path sessionsDir = Files.createTempDirectory("codex-history-nested-source");
+        try {
+            Path outer = this.writeSessionFile(sessionsDir, "outer-source",
+                    this.line("2026-10-12T00:00:00Z", "event_msg", "{\"type\":\"user_message\",\"message\":\"outer\"}"));
+            Path inner = this.writeSessionFile(sessionsDir, "inner-source",
+                    this.line("2026-10-12T00:00:01Z", "event_msg", "{\"type\":\"user_message\",\"message\":\"inner\"}"));
+            var outerBytes = new java.io.ByteArrayOutputStream();
+            var innerBytes = new java.io.ByteArrayOutputStream();
+            CodexHistoryReader reader = new CodexHistoryReader(sessionsDir, this.gson);
+            assertEquals(1, reader.forEachSessionMessage("outer-source", outer, 0, Files.size(outer), () -> true, record -> {
+                try {
+                    assertEquals(1, reader.forEachSessionMessage("inner-source", inner, 0, Files.size(inner), () -> true,
+                            nested -> assertEquals("inner", nested.getAsJsonObject("payload").get("message").getAsString())));
+                    assertEquals(1, reader.forEachSessionMessage("inner-source", inner, 0, Files.size(inner), () -> true,
+                            nested -> { }, bytes -> {
+                                byte[] chunk = new byte[bytes.remaining()];
+                                bytes.get(chunk);
+                                innerBytes.writeBytes(chunk);
+                            }));
+                } catch (IOException exception) {
+                    throw new java.io.UncheckedIOException(exception);
+                }
+            }, bytes -> {
+                byte[] chunk = new byte[bytes.remaining()];
+                bytes.get(chunk);
+                outerBytes.writeBytes(chunk);
+            }));
+            assertArrayEquals(Files.readAllBytes(outer), outerBytes.toByteArray());
+            assertArrayEquals(Files.readAllBytes(inner), innerBytes.toByteArray());
+        } finally {
+            this.deleteDirectory(sessionsDir);
+        }
+    }
+
+    /** A failing source observer must not remain installed on a later ordinary read. */
+    @Test
+    public void failedSourceObserverCannotPoisonTheNextRead() throws Exception {
+        Path sessionsDir = Files.createTempDirectory("codex-history-failed-observer");
+        try {
+            Path source = this.writeSessionFile(sessionsDir, "failed-observer",
+                    this.line("2026-10-12T00:00:00Z", "event_msg", "{\"type\":\"user_message\",\"message\":\"safe\"}"));
+            CodexHistoryReader reader = new CodexHistoryReader(sessionsDir, this.gson);
+            IllegalStateException failure = new IllegalStateException("observer failed");
+            assertSame(failure, assertThrows(IllegalStateException.class,
+                    () -> reader.forEachSessionMessage("failed-observer", source, 0, Files.size(source), () -> true,
+                            record -> { }, bytes -> { throw failure; })));
+            assertEquals(1, reader.forEachSessionMessage("failed-observer", source, 0, Files.size(source), () -> true,
+                    record -> assertEquals("safe", record.getAsJsonObject("payload").get("message").getAsString())));
+        } finally {
+            this.deleteDirectory(sessionsDir);
+        }
+    }
+
+    private CodexHistoryReader createReaderWithLocalConfigAuthorization(Path sessionsDir, boolean authorized) {
+        // Isolate the disk index from the developer's real ~/.codemoss/cache: a leftover
+        // __all__ index whose fileCount matches the fixture makes getUpdateTypeRecursive
+        // return NONE and restore unrelated sessions instead of scanning.
+        SessionIndexManager indexManager = new SessionIndexManager(indexCacheIsolationDir);
+        return new CodexHistoryReader(sessionsDir, gson, indexManager) {
+            @Override
+            boolean isCodexLocalConfigAuthorized() {
+                return authorized;
+            }
+        };
+    }
+
+    private Path writeSessionFile(Path parentDir, String sessionId, String... lines) throws IOException {
+        Files.createDirectories(parentDir);
+        Path file = parentDir.resolve(sessionId + ".jsonl");
+        Files.write(file, List.of(lines));
+        return file;
+    }
+
+    private String line(String timestamp, String type, String payloadJson) {
+        return "{\"timestamp\":\"" + timestamp + "\",\"type\":\"" + type + "\",\"payload\":" + payloadJson + "}";
+    }
+
+    private void deleteDirectory(Path dir) throws IOException {
+        if (dir == null || !Files.exists(dir)) {
+            return;
+        }
+        Files.walk(dir)
+                .sorted(Comparator.reverseOrder())
+                .forEach(path -> {
+                    try {
+                        Files.deleteIfExists(path);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                });
+    }
+}

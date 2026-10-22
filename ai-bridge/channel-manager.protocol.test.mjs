@@ -26,7 +26,7 @@ test('system command keeps stdout reserved for its JSON response', () => {
 });
 
 test('Claude session-page command treats empty cursors as the latest page', () => {
-  const homeDir = fs.mkdtempSync(join(os.tmpdir(), 'cc-gui-page-cursor-'));
+  const homeDir = fs.mkdtempSync(join(os.tmpdir(), 'agent-gui-page-cursor-'));
   const cwd = join(homeDir, 'project');
   const sessionId = 'page-cursor-regression';
   const sessionDir = join(homeDir, '.claude', 'projects', getClaudeProjectKey(cwd));

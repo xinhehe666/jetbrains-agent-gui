@@ -578,29 +578,13 @@
       "expand": "Expandir Barra Lateral",
       "collapse": "Recolher Barra Lateral"
     },
-    "community": "Comunidade",
-    "communityDesc": "Escaneie o QR code abaixo para entrar no grupo oficial do WeChat para as últimas novidades e suporte técnico",
+    "resources": "Recursos",
     "versionHistory": "Histórico de Versões",
     "versionHistoryDesc": "Visualizar todos os registros de atualização de versão",
-    "communityQrTip": "Escaneie com o WeChat para entrar na comunidade",
-    "communityQrAlt": "QR code da comunidade oficial do WeChat",
-    "socialDocs": "Documentação oficial",
-    "socialTitle": "Siga-nos",
-    "socialGithub": "Repositório GitHub — dê uma estrela!",
-    "socialX": "X (Twitter) @ZPeng31310",
-    "socialZhihu": "Zhihu @vscodeai",
-    "socialXiaohongshu": "Xiaohongshu (RED)",
-    "socialDouyin": "Douyin — passe o mouse para escanear e seguir",
-    "socialYoutube": "Canal do YouTube",
-    "douyinQrAlt": "QR code do Douyin",
-    "douyinId": "ID do Douyin: nengyongai",
-    "douyinCopied": "ID do Douyin copiado para a área de transferência",
-    "douyinCopyFailed": "Falha ao copiar. Por favor, copie manualmente.",
-    "sponsor": "Patrocinar",
-    "sponsorDesc": "Se este projeto te ajudou, considere patrocinar para apoiar a manutenção contínua!",
-    "alipay": "Alipay",
-    "wechatPay": "WeChat Pay",
-    "paypal": "PayPal",
+    "socialDocs": "Documentação",
+    "socialTitle": "Recursos do Agent GUI",
+    "socialDesc": "Documentação, rastreamento de problemas e histórico de versões desta bifurcação.",
+    "socialIssues": "Relatar um problema",
     "provider": {
       "currentConfig": "Configuração Atual do ClaudeCode",
       "loading": "Carregando...",
@@ -696,7 +680,7 @@
             "proxyConfigCodeLabel": "~/.claude/settings.json",
             "proxyConfigCode": "{\n  \"env\": {\n    \"HTTP_PROXY\": \"http://127.0.0.1:7897\",\n    \"HTTPS_PROXY\": \"http://127.0.0.1:7897\"\n  }\n}",
             "issuePrefix": "Se ainda não funcionar, por favor reporte um issue no GitHub: ",
-            "issueUrl": "https://github.com/zhukunpenglinyutong/idea-claude-code-gui/issues"
+            "issueUrl": "https://github.com/xinhehe666/jetbrains-cc-gui/issues"
           },
           "codex": {
             "title": "Configuração da Conta por Assinatura do Codex",
@@ -710,7 +694,7 @@
             "proxyConfigCodeLabel": "",
             "proxyConfigCode": "",
             "issuePrefix": "Se ainda não funcionar, por favor reporte um issue no GitHub: ",
-            "issueUrl": "https://github.com/zhukunpenglinyutong/idea-claude-code-gui/issues"
+            "issueUrl": "https://github.com/xinhehe666/jetbrains-cc-gui/issues"
           }
         }
       },
@@ -1237,7 +1221,7 @@
   },
   "config": {
     "clickToCopy": "Clique para copiar",
-    "officialDocs": "Documentação oficial",
+    "officialDocs": "Documentação",
     "switch": "Alternar",
     "switchProvider": "Alternar provedor",
     "runtimeProvider": {

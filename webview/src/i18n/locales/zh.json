@@ -717,29 +717,13 @@
       "expand": "展开侧边栏",
       "collapse": "折叠侧边栏"
     },
-    "community": "官方交流群",
-    "communityDesc": "扫描作者个人公众号二维码，获取微信交流群二维码，加群获得最新资讯和技术支持",
+    "resources": "资源",
     "versionHistory": "版本记录",
     "versionHistoryDesc": "查看所有版本更新记录",
-    "communityQrTip": "使用微信扫一扫",
-    "communityQrAlt": "官方微信交流群二维码",
-    "socialDocs": "官方文档",
-    "socialTitle": "关注我们",
-    "socialGithub": "GitHub 开源仓库，欢迎 Star",
-    "socialX": "X（Twitter）@ZPeng31310",
-    "socialZhihu": "知乎 @vscodeai",
-    "socialXiaohongshu": "小红书",
-    "socialDouyin": "抖音，鼠标悬停扫码关注",
-    "socialYoutube": "YouTube 频道 @昆鹏马上优化",
-    "douyinQrAlt": "抖音二维码",
-    "douyinId": "抖音号：nengyongai",
-    "douyinCopied": "抖音号已复制到剪贴板",
-    "douyinCopyFailed": "复制失败，请手动复制",
-    "sponsor": "赞助支持",
-    "sponsorDesc": "如果这个项目对你有帮助，欢迎赞助支持，你的支持是我持续维护的动力！",
-    "alipay": "支付宝",
-    "wechatPay": "微信",
-    "paypal": "PayPal",
+    "socialDocs": "使用文档",
+    "socialTitle": "Agent GUI 资源",
+    "socialDesc": "本分支的使用文档、问题反馈与版本记录。",
+    "socialIssues": "问题反馈",
     "provider": {
       "currentConfig": "当前ClaudeCode配置",
       "loading": "加载中...",
@@ -840,7 +824,7 @@
             "proxyConfigCodeLabel": "~/.claude/settings.json",
             "proxyConfigCode": "{\n  \"env\": {\n    \"HTTP_PROXY\": \"http://127.0.0.1:7897\",\n    \"HTTPS_PROXY\": \"http://127.0.0.1:7897\"\n  }\n}",
             "issuePrefix": "如果还是不行，可以去GitHub留言排查：",
-            "issueUrl": "https://github.com/zhukunpenglinyutong/idea-claude-code-gui/issues"
+            "issueUrl": "https://github.com/xinhehe666/jetbrains-cc-gui/issues"
           },
           "codex": {
             "title": "Codex 订阅制账号使用方式",
@@ -854,7 +838,7 @@
             "proxyConfigCodeLabel": "",
             "proxyConfigCode": "",
             "issuePrefix": "如果还是不行，可以去GitHub留言排查：",
-            "issueUrl": "https://github.com/zhukunpenglinyutong/idea-claude-code-gui/issues"
+            "issueUrl": "https://github.com/xinhehe666/jetbrains-cc-gui/issues"
           }
         }
       },
@@ -1311,7 +1295,7 @@
   },
   "config": {
     "clickToCopy": "点击复制",
-    "officialDocs": "官方文档",
+    "officialDocs": "使用文档",
     "switch": "切换",
     "switchProvider": "切换供应商",
     "runtimeProvider": {

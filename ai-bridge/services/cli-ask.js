@@ -579,7 +579,7 @@ async function askZcode(prompt, { model, cwd } = {}) {
       workspace,
       modelRef,
       prompt: String(prompt),
-      querySource: 'cc-gui-ask',
+      querySource: 'agent-gui-ask',
     };
     // The app-server only knows env-injected providers; register the client
     // channel up front (idempotent) so generateText's modelRef resolves.
