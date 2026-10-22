@@ -1,8 +1,8 @@
 <div align="center">
 
-# CC GUI（Claude, Codex and More）
+# Agent GUI（Claude, Codex and More）
 
-> Originally Claude Code GUI
+> A fork of CC GUI (originally Claude Code GUI)
 
 <img width="120" alt="Image" src="./docs/images/idea-claude-code-gui-logo.png" />
 
@@ -14,7 +14,7 @@
 
 </div>
 
-> To mitigate Claude trademark risks, this project has been renamed to CC GUI (originally Claude Code GUI). The logo has also been updated to reduce Chinese-specific elements. Regarding security, a        
+> This fork uses the Agent GUI display name and is based on the open-source CC GUI project (originally Claude Code GUI). Regarding security, a
   /security-review audit will be conducted before each minor version release, and a comprehensive claude-code-security audit will be performed every 10 minor versions. 
 
 A powerful IntelliJ IDEA plugin that provides a visual interface for **Claude Code**, **OpenAI Codex** and more AI coding CLIs, making AI-assisted programming more efficient and intuitive.
@@ -25,7 +25,7 @@ A powerful IntelliJ IDEA plugin that provides a visual interface for **Claude Co
 
 ## Installation
 
-[CC GUI（Claude, Codex and More） Installation](https://plugins.jetbrains.com/plugin/29342-cc-gui-claude-or-codex-)
+[Upstream CC GUI (Claude, Codex and More) Marketplace listing](https://plugins.jetbrains.com/plugin/29342-cc-gui-claude-or-codex-)
 
 ---
 

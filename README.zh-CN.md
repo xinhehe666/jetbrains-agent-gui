@@ -1,8 +1,8 @@
 <div align="center">
 
-# CC GUI（Claude, Codex and More）
+# Agent GUI（Claude, Codex and More）
 
-> 原名：Claude Code GUI
+> 基于 CC GUI 的分支（原名：Claude Code GUI）
 
 <img width="120" alt="Image" src="./docs/images/idea-claude-code-gui-logo.png" />
 
@@ -14,7 +14,7 @@
 
 </div>
 
-> 为规避Claude商标风险，本项目名称修改为CC GUI（原名：Claude Code GUI）；并更换LOGO减少中国元素；对于安全方面，后续每个小版本发版前都进行 /security-review 审查，每隔10个小版本进行一次整体的 claude-code-security 审查
+> 本分支使用 Agent GUI 作为展示名称，代码基于开源项目 CC GUI（原名：Claude Code GUI）。对于安全方面，后续每个小版本发版前都进行 /security-review 审查，每隔10个小版本进行一次整体的 claude-code-security 审查。
 
 一个功能强大的 IntelliJ IDEA 插件，为开发者提供 **Claude Code**、**OpenAI Codex** 以及更多 AI 编程 CLI的可视化操作界面，让 AI 辅助编程变得更加高效和直观。
 
@@ -24,7 +24,7 @@
 
 ## 插件下载
 
-[CC GUI（Claude, Codex and More） 下载](https://plugins.jetbrains.com/plugin/29342-cc-gui-claude-or-codex-)
+[上游 CC GUI（Claude, Codex and More）Marketplace 页面](https://plugins.jetbrains.com/plugin/29342-cc-gui-claude-or-codex-)
 
 ---
 

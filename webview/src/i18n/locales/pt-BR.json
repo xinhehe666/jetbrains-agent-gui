@@ -514,7 +514,7 @@
       "prompt": {
         "label": "Prompt Adicional",
         "placeholder": "Adicione seus requisitos extras aqui, ex: gerar commit em português, incluir número do issue, etc...",
-        "hint": "O plugin possui prompts de especificação CCG Commits integrados. O conteúdo que você adicionar aqui será usado como requisitos adicionais, e a IA priorizará suas instruções."
+        "hint": "O plugin possui prompts de especificação Agent GUI Commits integrados. O conteúdo que você adicionar aqui será usado como requisitos adicionais, e a IA priorizará suas instruções."
       },
       "codeReview": {
         "comingSoon": "Em Breve",

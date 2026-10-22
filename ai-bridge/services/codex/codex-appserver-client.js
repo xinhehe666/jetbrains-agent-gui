@@ -92,7 +92,7 @@ export class CodexAppServerClient extends EventEmitter {
     this.env = env;
     this.sensitiveEnvNames = new Set(sensitiveEnvNames.map(name => process.platform === 'win32' ? name.toUpperCase() : name));
     this.clientInfo = clientInfo
-      || { name: 'codemoss_intellij', title: 'CC GUI', version: '0.0.0' };
+      || { name: 'codemoss_intellij', title: 'Agent GUI', version: '0.0.0' };
     this.requestTimeoutMs = requestTimeoutMs;
     // Grace period for stdio to drain after the child's exit event; if a
     // grandchild inherited the pipes, 'close' never fires without teardown.
