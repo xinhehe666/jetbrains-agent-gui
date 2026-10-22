@@ -1,0 +1,900 @@
+package com.github.agentgui.handler;
+
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.github.agentgui.util.UserMessageSanitizer;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Base64;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+/**
+ * Codex message format conversion utilities.
+ * <p>
+ * Contains static methods for converting Codex message formats to Claude-compatible
+ * frontend formats. Extracted from HistoryHandler to improve separation of concerns.
+ * <p>
+ * Note: {@link #SESSION_FILE_MAP} maintains minimal state to track file-writing sessions
+ * across related exec_command / write_stdin pairs. Call {@link #clearSessionState()} when
+ * a new conversation starts to avoid stale entries.
+ */
+public class CodexMessageConverter {
+
+    /** Maximum number of tracked file-writing sessions to prevent unbounded growth. */
+    private static final int MAX_SESSION_ENTRIES = 256;
+    private static final Pattern CODEX_IMAGE_PATH_PATTERN =
+            Pattern.compile("<image\\b[^>]*\\bpath=\"([^\"]+)\"[^>]*>");
+
+    // A wrapper without a faithful static projection still carries user-visible
+    // work. Keep its generic card rather than silently discarding its result.
+    private static final Set<String> HIDDEN_HISTORY_TOOL_NAMES = Set.of();
+
+    // Tracks file-writing sessions so later write_stdin events can display the target file.
+    // Uses a bounded LRU map to prevent memory leaks over long IDE sessions.
+    private static final Map<Integer, String> SESSION_FILE_MAP =
+        Collections.synchronizedMap(new LinkedHashMap<Integer, String>(64, 0.75f, true) {
+            @Override
+            protected boolean removeEldestEntry(Map.Entry<Integer, String> eldest) {
+                return size() > MAX_SESSION_ENTRIES;
+            }
+        });
+
+    // Extracts a destination path from common shell write patterns.
+    // Note: The echo/printf alternative uses [^>]* instead of .* to prevent greedy matching across redirections.
+    private static final Pattern WRITE_CMD_PATTERN = Pattern.compile(
+        "cat\\s*>\\s*([^\\s;|&]+)|tee\\s+(?:-[a-zA-Z]+\\s+)*([^\\s;|&]+)|(?:echo|printf)\\s+[^>]*>\\s*([^\\s;|&]+)"
+    );
+
+    private CodexMessageConverter() {
+        // Utility class, no instantiation.
+    }
+
+    /**
+     * Safely extract a string from a JsonElement, handling null, primitives, and structured types.
+     * Returns the primitive string value when possible, falls back to {@code toString()} for
+     * arrays/objects, and returns the given default for null or missing elements.
+     */
+    private static String safeGetAsString(JsonElement elem, String defaultValue) {
+        if (elem == null || elem.isJsonNull()) {
+            return defaultValue;
+        }
+        if (elem.isJsonPrimitive()) {
+            return elem.getAsString();
+        }
+        return elem.toString();
+    }
+
+    /**
+     * Clear session tracking state. Should be called when a new conversation starts
+     * to avoid stale session-to-file mappings.
+     */
+    public static void clearSessionState() {
+        SESSION_FILE_MAP.clear();
+    }
+
+    /** Returns whether a legacy tool is intentionally omitted from history. */
+    public static boolean isHiddenHistoryToolName(String toolName) {
+        return toolName != null
+            && HIDDEN_HISTORY_TOOL_NAMES.contains(toolName.toLowerCase(Locale.ROOT));
+    }
+
+    /**
+     * Convert Codex content to Claude-format content blocks.
+     * Codex: [{type: "input_text", text: "..."}, {type: "text", text: "..."}]
+     * Claude: [{type: "text", text: "..."}]
+     */
+    public static JsonArray convertToClaudeContentBlocks(JsonElement contentElem) {
+        JsonArray claudeBlocks = new JsonArray();
+
+        if (contentElem == null) {
+            return claudeBlocks;
+        }
+
+        // Handle string type - convert to a single text block
+        if (contentElem.isJsonPrimitive()) {
+            JsonObject textBlock = new JsonObject();
+            textBlock.addProperty("type", "text");
+            textBlock.addProperty("text", contentElem.getAsString());
+            claudeBlocks.add(textBlock);
+            return claudeBlocks;
+        }
+
+        // Handle array type
+        if (contentElem.isJsonArray()) {
+            JsonArray contentArray = contentElem.getAsJsonArray();
+
+            for (JsonElement item : contentArray) {
+                if (item.isJsonObject()) {
+                    JsonObject itemObj = item.getAsJsonObject();
+                    String type = itemObj.has("type") ? itemObj.get("type").getAsString() : null;
+
+                    if (type != null) {
+                        JsonObject claudeBlock = new JsonObject();
+
+                        // Convert Codex "input_text" and "output_text" to Claude "text"
+                        if ("input_text".equals(type) || "output_text".equals(type) || "text".equals(type)) {
+                            claudeBlock.addProperty("type", "text");
+                            if (itemObj.has("text")) {
+                                claudeBlock.addProperty("text", itemObj.get("text").getAsString());
+                            }
+                            claudeBlocks.add(claudeBlock);
+                        }
+                        // Handle tool use (if present in Codex)
+                        else if ("tool_use".equals(type)) {
+                            claudeBlock.addProperty("type", "tool_use");
+                            if (itemObj.has("id")) {
+                                claudeBlock.addProperty("id", itemObj.get("id").getAsString());
+                            }
+                            if (itemObj.has("name")) {
+                                claudeBlock.addProperty("name", itemObj.get("name").getAsString());
+                            }
+                            if (itemObj.has("input")) {
+                                claudeBlock.add("input", itemObj.get("input"));
+                            }
+                            claudeBlocks.add(claudeBlock);
+                        }
+                        // Handle tool result
+                        else if ("tool_result".equals(type)) {
+                            claudeBlock.addProperty("type", "tool_result");
+                            if (itemObj.has("tool_use_id")) {
+                                claudeBlock.addProperty("tool_use_id", itemObj.get("tool_use_id").getAsString());
+                            }
+                            if (itemObj.has("content")) {
+                                claudeBlock.add("content", itemObj.get("content"));
+                            }
+                            if (itemObj.has("is_error")) {
+                                claudeBlock.addProperty("is_error", itemObj.get("is_error").getAsBoolean());
+                            }
+                            claudeBlocks.add(claudeBlock);
+                        }
+                        // Handle thinking block
+                        else if ("thinking".equals(type)) {
+                            claudeBlock.addProperty("type", "thinking");
+                            if (itemObj.has("thinking")) {
+                                claudeBlock.addProperty("thinking", itemObj.get("thinking").getAsString());
+                            }
+                            if (itemObj.has("text")) {
+                                claudeBlock.addProperty("text", itemObj.get("text").getAsString());
+                            }
+                            for (String field : List.of("native", "status")) {
+                                if (itemObj.has(field)) {
+                                    claudeBlock.add(field, itemObj.get(field).deepCopy());
+                                }
+                            }
+                            claudeBlocks.add(claudeBlock);
+                        }
+                        // Handle image
+                        else if ("image".equals(type) || "input_image".equals(type)) {
+                            claudeBlock.addProperty("type", "image");
+                            for (String field : List.of("src", "url", "image_url")) {
+                                String source = safeGetAsString(itemObj.get(field), "");
+                                if (!source.isBlank()) {
+                                    claudeBlock.addProperty("src", source);
+                                    break;
+                                }
+                            }
+                            if (!claudeBlock.has("src") && itemObj.has("source") && itemObj.get("source").isJsonObject()) {
+                                JsonObject source = itemObj.getAsJsonObject("source");
+                                String sourceType = safeGetAsString(source.get("type"), "");
+                                if ("base64".equals(sourceType)) {
+                                    String mediaType = safeGetAsString(source.get("media_type"), "image/png");
+                                    String data = safeGetAsString(source.get("data"), "");
+                                    if (!data.isBlank()) {
+                                        claudeBlock.addProperty("src", "data:" + mediaType + ";base64," + data);
+                                        claudeBlock.addProperty("mediaType", mediaType);
+                                    }
+                                } else if ("url".equals(sourceType)) {
+                                    String url = safeGetAsString(source.get("url"), "");
+                                    if (!url.isBlank()) {
+                                        claudeBlock.addProperty("src", url);
+                                    }
+                                }
+                            }
+                            if (itemObj.has("mediaType")) {
+                                claudeBlock.addProperty("mediaType", itemObj.get("mediaType").getAsString());
+                            }
+                            if (itemObj.has("alt")) {
+                                claudeBlock.addProperty("alt", itemObj.get("alt").getAsString());
+                            }
+                            claudeBlocks.add(claudeBlock);
+                        }
+                        else if ("localImage".equals(type) || "local_image".equals(type)) {
+                            JsonObject image = createLocalImageBlock(safeGetAsString(itemObj.get("path"), null));
+                            if (image != null) {
+                                claudeBlocks.add(image);
+                            }
+                        }
+                        // Other unknown types, try to keep as-is
+                        else {
+                            claudeBlocks.add(itemObj);
+                        }
+                    }
+                }
+            }
+
+            return claudeBlocks;
+        }
+
+        // Handle object type - treat as a single block
+        if (contentElem.isJsonObject()) {
+            claudeBlocks.add(contentElem.getAsJsonObject());
+            return claudeBlocks;
+        }
+
+        return claudeBlocks;
+    }
+
+    /**
+     * Extract text content from a Codex content field.
+     * Codex content can be in string, object, or array format.
+     */
+    public static String extractContentAsString(JsonElement contentElem) {
+        if (contentElem == null) {
+            return null;
+        }
+
+        // Handle string type
+        if (contentElem.isJsonPrimitive()) {
+            return contentElem.getAsString();
+        }
+
+        // Handle array type
+        if (contentElem.isJsonArray()) {
+            JsonArray contentArray = contentElem.getAsJsonArray();
+            StringBuilder sb = new StringBuilder();
+
+            for (JsonElement item : contentArray) {
+                if (item.isJsonObject()) {
+                    JsonObject itemObj = item.getAsJsonObject();
+
+                    // Flatten supported text-like blocks into a single preview string for the frontend.
+                    if (itemObj.has("type") && "text".equals(itemObj.get("type").getAsString())) {
+                        if (itemObj.has("text")) {
+                            if (sb.length() > 0) {
+                                sb.append("\n");
+                            }
+                            sb.append(itemObj.get("text").getAsString());
+                        }
+                    }
+                    // Extract input_text type (Codex user messages)
+                    else if (itemObj.has("type") && "input_text".equals(itemObj.get("type").getAsString())) {
+                        if (itemObj.has("text")) {
+                            if (sb.length() > 0) {
+                                sb.append("\n");
+                            }
+                            sb.append(itemObj.get("text").getAsString());
+                        }
+                    }
+                    // Extract output_text type (Codex AI assistant messages)
+                    else if (itemObj.has("type") && "output_text".equals(itemObj.get("type").getAsString())) {
+                        if (itemObj.has("text")) {
+                            if (sb.length() > 0) {
+                                sb.append("\n");
+                            }
+                            sb.append(itemObj.get("text").getAsString());
+                        }
+                    }
+                }
+            }
+
+            return sb.toString();
+        }
+
+        // Handle object type
+        if (contentElem.isJsonObject()) {
+            JsonObject contentObj = contentElem.getAsJsonObject();
+            if (contentObj.has("text")) {
+                return contentObj.get("text").getAsString();
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Convert Codex regular message to frontend format.
+     */
+    public static JsonObject convertCodexMessageToFrontend(JsonObject payload, String timestamp) {
+        String contentStr = extractContentAsString(payload.get("content"));
+        String role = payload.has("role") ? payload.get("role").getAsString() : "user";
+        if (!"user".equals(role) && !"assistant".equals(role)) {
+            return null;
+        }
+        boolean userMessage = "user".equals(role);
+        boolean strippedSystemTags = false;
+        JsonArray restoredUserImages = new JsonArray();
+        JsonArray convertedContent = convertToClaudeContentBlocks(payload.get("content"));
+
+        if (userMessage) {
+            String originalContent = contentStr;
+            restoredUserImages = restoreCodexImagePlaceholderBlocks(originalContent);
+            // Text cleanup must retain the actual attachments even when an
+            // envelope changed the text or the message has no text at all.
+            Set<String> imageSources = new java.util.HashSet<>();
+            for (JsonElement image : restoredUserImages) {
+                imageSources.add(safeGetAsString(image.getAsJsonObject().get("src"), ""));
+            }
+            for (JsonElement block : convertedContent) {
+                if (block.isJsonObject() && "image".equals(safeGetAsString(block.getAsJsonObject().get("type"), ""))) {
+                    String source = safeGetAsString(block.getAsJsonObject().get("src"), "");
+                    if (!source.isBlank() && imageSources.add(source)) {
+                        restoredUserImages.add(block);
+                    }
+                }
+            }
+            contentStr = stripSystemTags(originalContent);
+            strippedSystemTags = originalContent != null && !originalContent.equals(contentStr);
+            if ((contentStr == null || contentStr.isBlank()) && restoredUserImages.size() == 0) {
+                return null;
+            }
+        }
+
+        // Filter out system messages
+        if (contentStr != null && isSystemMessage(contentStr)) {
+            return null;
+        }
+
+        JsonObject frontendMsg = new JsonObject();
+        frontendMsg.addProperty("type", role);
+
+        if (payload.has("content")) {
+            if (contentStr != null && !contentStr.isEmpty()) {
+                frontendMsg.addProperty("content", contentStr);
+            }
+
+            JsonArray claudeContentBlocks = userMessage && (strippedSystemTags || restoredUserImages.size() > 0)
+                    ? userContentBlocks(restoredUserImages, contentStr)
+                    : convertedContent;
+            JsonObject rawObj = new JsonObject();
+            rawObj.add("content", claudeContentBlocks);
+            rawObj.addProperty("role", role);
+            frontendMsg.add("raw", rawObj);
+        }
+
+        if (timestamp != null) {
+            frontendMsg.addProperty("timestamp", timestamp);
+        }
+
+        return frontendMsg;
+    }
+
+    /** Preserves persisted reasoning boundaries even when no plaintext summary is available. */
+    public static JsonObject convertReasoningToFrontend(JsonObject payload, String timestamp) {
+        JsonArray blocks = new JsonArray();
+        for (String key : new String[]{"summary", "content"}) {
+            JsonElement value = payload.get(key);
+            if (value == null || !value.isJsonArray()) {
+                continue;
+            }
+            for (JsonElement entry : value.getAsJsonArray()) {
+                String text = entry.isJsonPrimitive() ? safeGetAsString(entry, "")
+                        : entry.isJsonObject() ? safeGetAsString(entry.getAsJsonObject().get("text"), "") : "";
+                if (text.isBlank()) {
+                    continue;
+                }
+                JsonObject block = new JsonObject();
+                block.addProperty("type", "thinking");
+                block.addProperty("thinking", text);
+                block.addProperty("text", text);
+                blocks.add(block);
+            }
+        }
+        if (blocks.isEmpty()) {
+            JsonObject block = new JsonObject();
+            block.addProperty("type", "thinking");
+            block.addProperty("thinking", "");
+            block.addProperty("text", "");
+            blocks.add(block);
+        }
+        for (JsonElement entry : blocks) {
+            JsonObject block = entry.getAsJsonObject();
+            block.addProperty("native", true);
+            block.addProperty("status", "completed");
+        }
+        JsonObject raw = new JsonObject();
+        raw.addProperty("role", "assistant");
+        raw.add("content", blocks);
+        JsonObject message = new JsonObject();
+        message.addProperty("type", "assistant");
+        message.addProperty("content", "");
+        message.add("raw", raw);
+        if (timestamp != null) {
+            message.addProperty("timestamp", timestamp);
+        }
+        return message;
+    }
+
+    /**
+     * Check if this is a system message (should be filtered).
+     */
+    public static boolean isSystemMessage(String contentStr) {
+        return contentStr.startsWith("Warning:") ||
+               contentStr.startsWith("Tool result:") ||
+               contentStr.startsWith("Exit code:") ||
+               contentStr.startsWith("# AGENTS.md instructions") ||
+               contentStr.startsWith("<agents-instructions>") ||
+               contentStr.startsWith("<INSTRUCTIONS>") ||
+               contentStr.startsWith("<environment_context>") ||
+               contentStr.startsWith("<recommended_plugins>");
+    }
+
+    /**
+     * Strip internal instruction blocks that are prepended before sending to Codex.
+     * These blocks are useful model context, but should not be rendered as user history.
+     */
+    public static String stripSystemTags(String text) {
+        return UserMessageSanitizer.sanitizeUserFacingText(text);
+    }
+
+    public static JsonArray restoreCodexImagePlaceholderBlocks(String text) {
+        JsonArray content = new JsonArray();
+        if (text == null || text.isBlank()) {
+            return content;
+        }
+
+        Matcher matcher = CODEX_IMAGE_PATH_PATTERN.matcher(text);
+        while (matcher.find()) {
+            JsonObject imageBlock = createLocalImageBlock(matcher.group(1));
+            if (imageBlock != null) {
+                content.add(imageBlock);
+            }
+        }
+        return content;
+    }
+
+    public static JsonArray userContentBlocks(JsonArray imageBlocks, String text) {
+        JsonArray content = new JsonArray();
+        if (imageBlocks != null) {
+            for (JsonElement block : imageBlocks) {
+                content.add(block.deepCopy());
+            }
+        }
+        if (text != null && !text.isBlank()) {
+            JsonObject textBlock = new JsonObject();
+            textBlock.addProperty("type", "text");
+            textBlock.addProperty("text", text);
+            content.add(textBlock);
+        }
+        return content;
+    }
+
+    private static JsonArray textContentBlocks(String text) {
+        JsonArray content = new JsonArray();
+        JsonObject textBlock = new JsonObject();
+        textBlock.addProperty("type", "text");
+        textBlock.addProperty("text", text);
+        content.add(textBlock);
+        return content;
+    }
+
+    private static JsonObject createLocalImageBlock(String imagePath) {
+        if (imagePath == null || imagePath.trim().isEmpty()) {
+            return null;
+        }
+
+        try {
+            Path path = Path.of(imagePath);
+            if (!Files.isRegularFile(path)) {
+                return null;
+            }
+
+            String mediaType = Files.probeContentType(path);
+            if (mediaType == null || mediaType.isBlank()) {
+                mediaType = guessImageMediaType(path);
+            }
+            String base64Data = Base64.getEncoder().encodeToString(Files.readAllBytes(path));
+            JsonObject imageBlock = new JsonObject();
+            imageBlock.addProperty("type", "image");
+            imageBlock.addProperty("src", "data:" + mediaType + ";base64," + base64Data);
+            imageBlock.addProperty("mediaType", mediaType);
+            imageBlock.addProperty("alt", path.getFileName() != null ? path.getFileName().toString() : "image");
+            return imageBlock;
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private static String guessImageMediaType(Path path) {
+        String fileName = path.getFileName() != null ? path.getFileName().toString().toLowerCase() : "";
+        if (fileName.endsWith(".jpg") || fileName.endsWith(".jpeg")) {
+            return "image/jpeg";
+        }
+        if (fileName.endsWith(".gif")) {
+            return "image/gif";
+        }
+        if (fileName.endsWith(".webp")) {
+            return "image/webp";
+        }
+        if (fileName.endsWith(".bmp")) {
+            return "image/bmp";
+        }
+        if (fileName.endsWith(".svg")) {
+            return "image/svg+xml";
+        }
+        return "image/png";
+    }
+
+    /**
+     * Convert Codex function_call to Claude tool_use format.
+     */
+    public static JsonObject convertFunctionCallToToolUse(JsonObject payload, String timestamp) {
+        String toolName = payload.has("name") ? payload.get("name").getAsString() : "unknown";
+        JsonElement toolInput = parseToolArguments(payload);
+
+        // Normalize tool identities first so downstream input conversion can target the displayed tool name.
+        toolName = convertToolName(toolName, toolInput);
+
+        // Filter out ignored tools (e.g., write_stdin)
+        if (toolName == null) {
+            return null;
+        }
+
+        toolInput = convertToolInput(toolName, toolInput);
+
+        JsonObject frontendMsg = new JsonObject();
+        frontendMsg.addProperty("type", "assistant");
+
+        // Build tool_use format
+        JsonObject toolUse = new JsonObject();
+        toolUse.addProperty("type", "tool_use");
+        toolUse.addProperty("id", payload.has("call_id") ? payload.get("call_id").getAsString() : "unknown");
+        toolUse.addProperty("name", toolName);
+
+        if (toolInput != null) {
+            toolUse.add("input", toolInput);
+        }
+
+        JsonArray content = new JsonArray();
+        content.add(toolUse);
+
+        frontendMsg.addProperty("content", "Tool: " + toolName);
+
+        JsonObject rawObj = new JsonObject();
+        rawObj.add("content", content);
+        rawObj.addProperty("role", "assistant");
+        frontendMsg.add("raw", rawObj);
+
+        if (timestamp != null) {
+            frontendMsg.addProperty("timestamp", timestamp);
+        }
+
+        return frontendMsg;
+    }
+
+    /**
+     * Parse tool call arguments.
+     */
+    public static JsonElement parseToolArguments(JsonObject payload) {
+        if (!payload.has("arguments") || payload.get("arguments").isJsonNull()) {
+            return null;
+        }
+        if (!payload.get("arguments").isJsonPrimitive()) {
+            return payload.get("arguments").deepCopy();
+        }
+        try {
+            return JsonParser.parseString(payload.get("arguments").getAsString());
+        } catch (Exception e) {
+            JsonObject input = new JsonObject();
+            input.add("input", payload.get("arguments").deepCopy());
+            return input;
+        }
+    }
+
+    /**
+     * Smart tool name conversion (shell_command -> read/glob, update_plan -> todowrite).
+     *
+     * @return converted tool name, or null if the tool should be filtered out (e.g. write_stdin).
+     */
+    public static String convertToolName(String toolName, JsonElement toolInput) {
+        if (isHiddenHistoryToolName(toolName)) {
+            return null;
+        }
+        if ("shell_command".equals(toolName) && toolInput != null && toolInput.isJsonObject()) {
+            JsonObject inputObj = toolInput.getAsJsonObject();
+            if (inputObj.has("command")) {
+                String command = inputObj.get("command").getAsString().trim();
+                // List/find commands -> glob (consistent with ai-bridge smartToolName)
+                if (command.matches("^(ls|find|tree)\\b.*")) {
+                    return "glob";
+                }
+                // File viewing commands -> read
+                if (command.matches("^(pwd|cat|head|tail|file|stat)\\b.*")) {
+                    return "read";
+                }
+                // Search commands -> glob
+                if (command.matches("^(grep|rg|ack|ag)\\b.*")) {
+                    return "glob";
+                }
+            }
+        }
+        if ("update_plan".equals(toolName) && toolInput != null && toolInput.isJsonObject()) {
+            JsonObject inputObj = toolInput.getAsJsonObject();
+            if (inputObj.has("plan") && inputObj.get("plan").isJsonArray()) {
+                return "todowrite";
+            }
+        }
+        return toolName;
+    }
+
+    /**
+     * Convert tool input (update_plan -> todowrite format conversion).
+     * Also tracks exec_command sessions and enriches write_stdin with file paths.
+     */
+    public static JsonElement convertToolInput(String toolName, JsonElement toolInput) {
+        // Capture the write target when a terminal session starts writing to a file.
+        if ("exec_command".equals(toolName) && toolInput != null && toolInput.isJsonObject()) {
+            JsonObject inputObj = toolInput.getAsJsonObject();
+            if (inputObj.has("cmd") && inputObj.has("session_id")) {
+                String cmd = inputObj.get("cmd").getAsString();
+                int sessionId = inputObj.get("session_id").getAsInt();
+
+                // The regex covers redirection and tee-based writes used by the coding agents.
+                Matcher matcher = WRITE_CMD_PATTERN.matcher(cmd);
+                if (matcher.find()) {
+                    String filePath = matcher.group(1) != null ? matcher.group(1) :
+                                    (matcher.group(2) != null ? matcher.group(2) : matcher.group(3));
+                    if (filePath != null) {
+                        SESSION_FILE_MAP.put(sessionId, filePath.trim());
+                    }
+                }
+            }
+        }
+
+        // Map Codex protocol field `cmd` to frontend-expected `command` for shell-like tools.
+        // The live path emits {command, description} via handleCommandExecution, so this
+        // branch only fires when replaying Codex history (function_call payload retains `cmd`).
+        // Without this mapping BashToolGroupBlock renders blank timeline rows because
+        // parseBashItem only reads input.command.
+        if (("exec_command".equals(toolName) || "shell_command".equals(toolName))
+                && toolInput != null && toolInput.isJsonObject()) {
+            JsonObject inputObj = toolInput.getAsJsonObject();
+            if (inputObj.has("cmd") && !inputObj.has("command")) {
+                JsonObject enriched = inputObj.deepCopy();
+                enriched.add("command", inputObj.get("cmd"));
+                toolInput = enriched;
+            }
+        }
+
+        // Enrich incremental writes with the previously discovered destination path.
+        if ("write".equals(toolName) && toolInput != null && toolInput.isJsonObject()) {
+            JsonObject inputObj = toolInput.getAsJsonObject();
+            if (inputObj.has("session_id")) {
+                int sessionId = inputObj.get("session_id").getAsInt();
+                String filePath = SESSION_FILE_MAP.get(sessionId);
+                if (filePath != null) {
+                    JsonObject enriched = new JsonObject();
+                    for (String key : inputObj.keySet()) {
+                        enriched.add(key, inputObj.get(key));
+                    }
+                    enriched.addProperty("file_path", filePath);
+                    return enriched;
+                }
+            }
+        }
+
+        // Translate plan updates into the todo structure expected by the Claude-style frontend.
+        if (!"todowrite".equals(toolName) || toolInput == null || !toolInput.isJsonObject()) {
+            return toolInput;
+        }
+
+        JsonObject inputObj = toolInput.getAsJsonObject();
+        if (!inputObj.has("plan") || !inputObj.get("plan").isJsonArray()) {
+            return toolInput;
+        }
+
+        JsonArray planArray = inputObj.getAsJsonArray("plan");
+        JsonArray todosArray = new JsonArray();
+
+        for (int j = 0; j < planArray.size(); j++) {
+            if (planArray.get(j).isJsonObject()) {
+                JsonObject planItem = planArray.get(j).getAsJsonObject();
+                JsonObject todoItem = new JsonObject();
+
+                if (planItem.has("step")) {
+                    todoItem.addProperty("content", planItem.get("step").getAsString());
+                    todoItem.addProperty("activeForm", planItem.get("step").getAsString());
+                }
+                todoItem.addProperty("status", planItem.has("status") ? planItem.get("status").getAsString() : "pending");
+                todoItem.addProperty("id", String.valueOf(j));
+
+                todosArray.add(todoItem);
+            }
+        }
+
+        JsonObject newInput = new JsonObject();
+        newInput.add("todos", todosArray);
+        return newInput;
+    }
+
+    /**
+     * Convert Codex function_call_output to Claude tool_result format.
+     */
+    public static JsonObject convertFunctionCallOutputToToolResult(JsonObject payload, String timestamp) {
+        JsonObject frontendMsg = new JsonObject();
+        frontendMsg.addProperty("type", "user");
+
+        JsonObject toolResult = new JsonObject();
+        toolResult.addProperty("type", "tool_result");
+        toolResult.addProperty("tool_use_id", payload.has("call_id") ? payload.get("call_id").getAsString() : "unknown");
+
+        JsonElement outputElement = payload.get("output");
+        String output = extractContentAsString(outputElement);
+        if (output == null || (output.isEmpty() && outputElement != null && outputElement.isJsonArray())) {
+            output = safeGetAsString(outputElement, "");
+        }
+        toolResult.addProperty("content", output);
+        toolResult.addProperty("is_error", isExplicitToolError(payload, outputElement, output));
+
+        JsonArray content = new JsonArray();
+        content.add(toolResult);
+
+        frontendMsg.addProperty("content", "[tool_result]");
+
+        JsonObject rawObj = new JsonObject();
+        rawObj.add("content", content);
+        rawObj.addProperty("role", "user");
+        frontendMsg.add("raw", rawObj);
+
+        if (timestamp != null) {
+            frontendMsg.addProperty("timestamp", timestamp);
+        }
+
+        return frontendMsg;
+    }
+
+    /** Checks explicit failure metadata in a tool output and its transport envelopes. */
+    public static boolean isFailedToolOutput(JsonObject payload) {
+        JsonElement output = payload == null ? null : payload.get("output");
+        return payload != null && isExplicitToolError(payload, output, extractContentAsString(output));
+    }
+
+    private static boolean isExplicitToolError(JsonObject payload, JsonElement outputElement, String output) {
+        if (hasErrorStatus(payload) || hasStructuredToolError(outputElement, 0)) {
+            return true;
+        }
+        if (output == null) {
+            return false;
+        }
+        String normalized = output.stripLeading().toLowerCase(Locale.ROOT);
+        return normalized.startsWith("error:")
+                || normalized.equals("script failed")
+                || normalized.startsWith("script failed\n")
+                || normalized.startsWith("script failed\r\n")
+                || normalized.startsWith("script error:")
+                || normalized.startsWith("failed to parse")
+                || normalized.startsWith("failed-to-parse")
+                || normalized.startsWith("permission denied")
+                || normalized.startsWith("permission-denied")
+                || normalized.startsWith("command denied")
+                || normalized.startsWith("command-denied");
+    }
+
+    private static boolean hasErrorStatus(JsonObject object) {
+        String status = safeGetAsString(object.get("status"), "");
+        if (List.of("error", "failed", "declined", "rejected").contains(status.toLowerCase(Locale.ROOT))) {
+            return true;
+        }
+        for (String field : List.of("is_error", "isError")) {
+            JsonElement value = object.get(field);
+            if (value != null && value.isJsonPrimitive() && value.getAsJsonPrimitive().isBoolean()
+                    && value.getAsBoolean()) {
+                return true;
+            }
+        }
+        for (String field : List.of("exit_code", "exitCode")) {
+            JsonElement value = object.get(field);
+            if (value != null && value.isJsonPrimitive() && value.getAsJsonPrimitive().isNumber()
+                    && value.getAsNumber().doubleValue() != 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean hasStructuredToolError(JsonElement value, int depth) {
+        if (value == null || value.isJsonNull() || depth > 12) {
+            return false;
+        }
+        if (value.isJsonArray()) {
+            for (JsonElement item : value.getAsJsonArray()) {
+                if (hasStructuredToolError(item, depth + 1)) {
+                    return true;
+                }
+            }
+        } else if (value.isJsonObject()) {
+            JsonObject object = value.getAsJsonObject();
+            if (hasErrorStatus(object)) {
+                return true;
+            }
+            // Only transport envelopes and content blocks carry result state.
+            // Command stdout may contain arbitrary JSON and is not a status.
+            for (String field : List.of("content", "text", "value", "result")) {
+                if (hasStructuredToolError(object.get(field), depth + 1)) {
+                    return true;
+                }
+            }
+        } else if (value.isJsonPrimitive() && value.getAsJsonPrimitive().isString()) {
+            String text = value.getAsString().trim();
+            if (text.startsWith("{") || text.startsWith("[")) {
+                try {
+                    return hasStructuredToolError(JsonParser.parseString(text), depth + 1);
+                } catch (RuntimeException ignored) {
+                    // Plain output remains text when it is not a whole JSON envelope.
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Convert Codex custom_tool_call_output to the same tool_result protocol used by function calls.
+     */
+    public static JsonObject convertCustomToolCallOutputToToolResult(JsonObject payload, String timestamp) {
+        return convertFunctionCallOutputToToolResult(payload, timestamp);
+    }
+
+    /**
+     * Convert Codex custom_tool_call to Claude tool_use format.
+     * Handles apply_patch and other custom tools.
+     */
+    public static JsonObject convertCustomToolCallToToolUse(JsonObject payload, String timestamp) {
+        String toolName = payload.has("name") ? payload.get("name").getAsString() : "unknown";
+        if (isHiddenHistoryToolName(toolName)) {
+            return null;
+        }
+
+        JsonObject frontendMsg = new JsonObject();
+        frontendMsg.addProperty("type", "assistant");
+
+        String toolInput = safeGetAsString(payload.get("input"), "");
+
+        JsonObject toolUse = new JsonObject();
+        toolUse.addProperty("type", "tool_use");
+        toolUse.addProperty("id", payload.has("call_id") ? payload.get("call_id").getAsString() : "unknown");
+        toolUse.addProperty("name", toolName);
+
+        JsonObject input = new JsonObject();
+        input.addProperty("patch", toolInput);
+
+        // Surface the first touched file so the frontend can show a concrete target for patch-based edits.
+        if ("apply_patch".equals(toolName)
+                && (toolInput.contains("*** Add File:") || toolInput.contains("*** Update File:"))) {
+            String[] lines = toolInput.split("\n");
+            for (String line : lines) {
+                if (line.startsWith("*** Add File:") || line.startsWith("*** Update File:")) {
+                    String filePath = line.substring(line.indexOf(":") + 1).trim();
+                    input.addProperty("file_path", filePath);
+                    break;
+                }
+            }
+        }
+
+        toolUse.add("input", input);
+
+        JsonArray content = new JsonArray();
+        content.add(toolUse);
+
+        frontendMsg.addProperty("content", "Tool: " + toolName);
+
+        JsonObject rawObj = new JsonObject();
+        rawObj.add("content", content);
+        rawObj.addProperty("role", "assistant");
+        frontendMsg.add("raw", rawObj);
+
+        if (timestamp != null) {
+            frontendMsg.addProperty("timestamp", timestamp);
+        }
+
+        return frontendMsg;
+    }
+}

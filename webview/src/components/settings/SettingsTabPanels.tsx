@@ -149,6 +149,6 @@ export const OtherPanel = ({ basicActions }: SettingsTabPanelProps) => (
   />
 );
 
-export const CommunityPanel = ({ addToast }: SettingsTabPanelProps) => (
-  <CommunitySection addToast={addToast} />
+export const CommunityPanel = () => (
+  <CommunitySection />
 );

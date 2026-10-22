@@ -53,7 +53,7 @@ function logDebug(...args) {
 }
 
 /**
- * Map CCGUI permission modes onto mcode --permission policies
+ * Map AgentGUI permission modes onto mcode --permission policies
  * (ask | smart | full | off). "ask" is never used: headless exec cannot
  * answer an interactive permission prompt.
  */
@@ -307,7 +307,7 @@ function buildMiniMaxArgs({ message, sessionId, model, permissionMode, cwd }) {
  * @param {string} model
  * @param {string} [_reasoningEffort] unused (mcode reasoning is model-driven)
  * @param {Array} [attachments] image attachments (fileName/mediaType/data)
- * @param {string} [permissionMode] CCGUI permission mode
+ * @param {string} [permissionMode] AgentGUI permission mode
  */
 export async function sendMessage(
   message,

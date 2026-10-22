@@ -154,7 +154,7 @@ export function registerUsageModeCallbacks(options: UseWindowCallbacksOptions): 
       if (state.codexFastMode === 'normal' || state.codexFastMode === 'fast') {
         setCodexFastMode(state.codexFastMode as CodexFastMode);
       }
-      window.__CCGUI_RECOVERY_STATE_APPLIED__ = true;
+      window.__AGENTGUI_RECOVERY_STATE_APPLIED__ = true;
     } catch (error) {
       console.error('[Frontend] Failed to apply backend tab state:', error);
     }

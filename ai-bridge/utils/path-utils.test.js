@@ -116,7 +116,7 @@ test('getClaudeProjectKey matches the session writer for common paths', () => {
 });
 
 test('getClaudeProjectKey resolves symlinked project paths like the CLI (issue #1789)', () => {
-  const realDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-gui-key-real-'));
+  const realDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-gui-key-real-'));
   const linkDir = `${realDir}-link`;
   try {
     let linkCreated = true;
@@ -143,7 +143,7 @@ test('getClaudeProjectKey resolves symlinked project paths like the CLI (issue #
 });
 
 test('getClaudeProjectKey falls back to raw encoding for nonexistent paths', () => {
-  const ghost = path.join(os.tmpdir(), 'cc-gui-nonexistent-ghost');
+  const ghost = path.join(os.tmpdir(), 'agent-gui-nonexistent-ghost');
   assert.equal(getClaudeProjectKey(ghost), ghost.replace(/[^a-zA-Z0-9]/g, '-'));
 });
 

@@ -26,7 +26,7 @@ export const GROK_IMAGE_ONLY_FALLBACK_TEXT = 'Please analyze the attached image(
 /** Stable marker separating user-visible text from Kimi CLI-only image injection. */
 export const KIMI_IMAGE_INJECTION_MARKER = '\n\n<!-- mossx:kimi-image-attachments -->\n';
 
-const TEMP_IMAGE_SUBDIR = 'cc-gui-cli-images';
+const TEMP_IMAGE_SUBDIR = 'agent-gui-cli-images';
 
 /**
  * @param {unknown} mediaType

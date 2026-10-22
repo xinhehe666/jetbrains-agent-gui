@@ -365,7 +365,7 @@ test('acquireRuntime discards a closed runtime still registered from an abort', 
   //
   // Runs in a child process with a mock SDK (mirroring the [1m]-toggle test)
   // so acquireRuntime never touches the real SDK loader or credentials.
-  const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-gui-closed-runtime-'));
+  const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-gui-closed-runtime-'));
   try {
     fs.mkdirSync(path.join(tempHome, '.codemoss'), { recursive: true });
     fs.writeFileSync(

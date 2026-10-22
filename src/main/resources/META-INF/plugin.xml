@@ -1,10 +1,10 @@
 <idea-plugin>
-    <id>com.github.idea-claude-code-gui</id>
-    <name>CC GUI (Claude, Codex and More)</name>
-    <vendor>MossX</vendor>
+    <id>com.github.agentgui</id>
+    <name>Agent GUI (Claude, Codex and More)</name>
+    <vendor url="https://github.com/xinhehe666">xinhehe666</vendor>
 
     <!-- Resource bundle for i18n -->
-    <resource-bundle>messages.ClaudeCodeGuiBundle</resource-bundle>
+    <resource-bundle>messages.AgentGuiBundle</resource-bundle>
 
     <description><![CDATA[
         <h2>Multi-engine GUI for Claude Code, Codex, OpenCode & more - MIT 100% Open Source</h2>
@@ -55,12 +55,12 @@
 
         <h2>使用方法</h2>
         <ul>
-            <li>从右侧边栏打开 CC GUI 工具窗口</li>
+            <li>从右侧边栏打开 Agent GUI 工具窗口</li>
             <li>选中代码后使用 <kbd>Ctrl+Alt+K</kbd>（Win/Linux）或 <kbd>Cmd+Alt+K</kbd>（Mac）发送给 AI</li>
             <li>即时获得 AI 驱动的代码辅助和智能建议</li>
         </ul>
 
-        <p><em>Keywords: CCGUI, CC-GUI, Claude, Claude Code, Codex, OpenAI Codex, OpenCode, Gemini, Kimi, Grok, PI CLI, OMP, DeepSeek, Code Generation, AI Coding, AI Coding Assistant</em></p>
+        <p><em>Keywords: Agent GUI, AgentGUI, Agent-GUI, Claude, Claude Code, Codex, OpenAI Codex, OpenCode, Gemini, Kimi, Grok, PI CLI, OMP, DeepSeek, Code Generation, AI Coding, AI Coding Assistant</em></p>
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>
@@ -79,41 +79,41 @@
     <depends optional="true" config-file="python-features.xml">com.intellij.modules.python</depends>
 
     <extensions defaultExtensionNs="com.intellij">
-        <!-- CC GUI tool window (includes history feature) -->
-        <toolWindow id="CCG"
+        <!-- Agent GUI tool window (includes history feature) -->
+        <toolWindow id="AGENTGUI"
                     anchor="right"
-                    factoryClass="com.github.claudecodegui.ui.toolwindow.ClaudeSDKToolWindow"
-                    icon="/icons/cc-gui-icon.svg"
+                    factoryClass="com.github.agentgui.ui.toolwindow.AgentGuiToolWindow"
+                    icon="/icons/agent-gui-icon.svg"
                     canCloseContents="true"/>
 
         <!-- Pre-extract AI Bridge on project open to avoid EDT freeze -->
-        <postStartupActivity implementation="com.github.claudecodegui.startup.BridgePreloader"/>
+        <postStartupActivity implementation="com.github.agentgui.startup.BridgePreloader"/>
 
         <!-- Cleanup old ai-bridge cache when plugin version changes -->
-        <postStartupActivity implementation="com.github.claudecodegui.startup.PluginUpdateListener"/>
+        <postStartupActivity implementation="com.github.agentgui.startup.PluginUpdateListener"/>
 
         <!-- Monitor Run/Debug Service Output -->
-        <postStartupActivity implementation="com.github.claudecodegui.service.RunConfigMonitorService"/>
+        <postStartupActivity implementation="com.github.agentgui.service.RunConfigMonitorService"/>
 
         <!-- macOS 27+: Cmd+V keydown is swallowed before reaching CEF when the JCEF
              webview (OSR) has focus, breaking image paste. Registers an AWT-level
              fallback listener plus a CEF-level keyboard hook that detects the
              orphaned Cmd+V KEYUP and forwards clipboard images to the webview. -->
-        <postStartupActivity implementation="com.github.claudecodegui.startup.PasteKeyInitializer"/>
+        <postStartupActivity implementation="com.github.agentgui.startup.PasteKeyInitializer"/>
 
         <!-- StatusBar widget for task notification -->
         <statusBarWidgetFactory id="ClaudeStatusBarWidget"
-                                implementation="com.github.claudecodegui.notifications.ClaudeStatusBarWidget$Factory"/>
+                                implementation="com.github.agentgui.notifications.ClaudeStatusBarWidget$Factory"/>
 
         <!-- Notification group for DevTools and other balloon notifications -->
-        <notificationGroup id="CC GUI Notifications" displayType="BALLOON"/>
+        <notificationGroup id="Agent GUI Notifications" displayType="BALLOON"/>
     </extensions>
 
     <actions>
-        <!-- Action to send selected code to CC GUI -->
-        <action id="ClaudeCodeGUI.SendSelectionToTerminalAction"
-                class="com.github.claudecodegui.action.editor.SendSelectionToTerminalAction"
-                icon="/icons/cc-gui-icon.svg">
+        <!-- Action to send selected code to Agent GUI -->
+        <action id="AgentGUI.SendSelectionToTerminalAction"
+                class="com.github.agentgui.action.editor.SendSelectionToTerminalAction"
+                icon="/icons/agent-gui-icon.svg">
             <!-- Add to editor context menu (displayed at the top) -->
             <add-to-group group-id="EditorPopupMenu" anchor="first"/>
             <keyboard-shortcut keymap="$default" first-keystroke="ctrl alt K"/>
@@ -122,91 +122,91 @@
         </action>
 
         <!-- Copy AI Reference Action -->
-        <action id="ClaudeCodeGUI.CopySelectionReferenceAction"
-                class="com.github.claudecodegui.action.editor.CopySelectionReferenceAction"
-                icon="/icons/cc-gui-icon.svg">
+        <action id="AgentGUI.CopySelectionReferenceAction"
+                class="com.github.agentgui.action.editor.CopySelectionReferenceAction"
+                icon="/icons/agent-gui-icon.svg">
             <add-to-group group-id="EditorPopupMenu"
                            anchor="after"
-                           relative-to-action="ClaudeCodeGUI.SendSelectionToTerminalAction"/>
+                           relative-to-action="AgentGUI.SendSelectionToTerminalAction"/>
         </action>
 
         <!-- Quick Fix with Claude Action -->
-        <action id="ClaudeCodeGUI.QuickFixWithClaudeAction"
-                class="com.github.claudecodegui.action.editor.QuickFixWithClaudeAction"
-                icon="/icons/cc-gui-icon.svg">
+        <action id="AgentGUI.QuickFixWithClaudeAction"
+                class="com.github.agentgui.action.editor.QuickFixWithClaudeAction"
+                icon="/icons/agent-gui-icon.svg">
             <add-to-group group-id="EditorPopupMenu"
                            anchor="after"
-                           relative-to-action="ClaudeCodeGUI.SendSelectionToTerminalAction"/>
+                           relative-to-action="AgentGUI.SendSelectionToTerminalAction"/>
             <keyboard-shortcut keymap="$default" first-keystroke="ctrl shift Q"/>
             <keyboard-shortcut keymap="Mac OS X" first-keystroke="meta shift Q"/>
             <keyboard-shortcut keymap="macOS" first-keystroke="meta shift Q"/>
         </action>
 
         <!-- Create New Tab Action (can be invoked via Find Action or programmatically) -->
-        <action id="ClaudeCodeGUI.CreateNewTabAction"
-                class="com.github.claudecodegui.action.tab.CreateNewTabAction"
+        <action id="AgentGUI.CreateNewTabAction"
+                class="com.github.agentgui.action.tab.CreateNewTabAction"
                 icon="AllIcons.General.Add"/>
 
         <!-- Rename Tab Action -->
-        <action id="ClaudeCodeGUI.RenameTabAction"
-                class="com.github.claudecodegui.action.tab.RenameTabAction"
+        <action id="AgentGUI.RenameTabAction"
+                class="com.github.agentgui.action.tab.RenameTabAction"
                 icon="AllIcons.Actions.Edit"/>
 
         <!-- Detach Tab Action -->
-        <action id="ClaudeCodeGUI.DetachTabAction"
-                class="com.github.claudecodegui.action.tab.DetachTabAction"
+        <action id="AgentGUI.DetachTabAction"
+                class="com.github.agentgui.action.tab.DetachTabAction"
                 icon="AllIcons.Actions.MoveToWindow"/>
 
         <!-- Save As Template Action -->
-        <action id="ClaudeCodeGUI.SaveAsTemplateAction"
-                class="com.github.claudecodegui.action.SaveAsTemplateAction"
-                icon="/icons/cc-gui-icon.svg"/>
+        <action id="AgentGUI.SaveAsTemplateAction"
+                class="com.github.agentgui.action.SaveAsTemplateAction"
+                icon="/icons/agent-gui-icon.svg"/>
 
         <!-- Create From Template Action -->
-        <action id="ClaudeCodeGUI.CreateFromTemplateAction"
-                class="com.github.claudecodegui.action.CreateFromTemplateAction"
+        <action id="AgentGUI.CreateFromTemplateAction"
+                class="com.github.agentgui.action.CreateFromTemplateAction"
                 icon="AllIcons.Actions.AddMulticaret"/>
 
         <!-- Open DevTools Action for JCEF debugging -->
-        <action id="ClaudeCodeGUI.OpenDevToolsAction"
-                class="com.github.claudecodegui.action.dev.OpenDevToolsAction"
+        <action id="AgentGUI.OpenDevToolsAction"
+                class="com.github.agentgui.action.dev.OpenDevToolsAction"
                 icon="AllIcons.Xml.Browsers.Chromium"/>
 
         <!-- Action to send file path from the file tree to the input box -->
-        <action id="ClaudeCodeGUI.SendFilePathToInputAction"
-                class="com.github.claudecodegui.action.editor.SendFilePathToInputAction"
-                icon="/icons/cc-gui-icon.svg">
+        <action id="AgentGUI.SendFilePathToInputAction"
+                class="com.github.agentgui.action.editor.SendFilePathToInputAction"
+                icon="/icons/agent-gui-icon.svg">
             <!-- Add to project file tree and editor tab context menus -->
             <add-to-group group-id="ProjectViewPopupMenu" anchor="first"/>
             <add-to-group group-id="EditorTabPopupMenu" anchor="first"/>
         </action>
 
-        <!-- Action to send the selected console text to CC GUI -->
-        <action id="ClaudeCodeGUI.SendConsoleSelectionToInputAction"
-                class="com.github.claudecodegui.action.console.SendConsoleSelectionToInputAction"
-                icon="/icons/cc-gui-icon.svg">
+        <!-- Action to send the selected console text to Agent GUI -->
+        <action id="AgentGUI.SendConsoleSelectionToInputAction"
+                class="com.github.agentgui.action.console.SendConsoleSelectionToInputAction"
+                icon="/icons/agent-gui-icon.svg">
             <add-to-group group-id="ConsoleView.PopupMenu" anchor="last"/>
         </action>
 
         <!-- Chat tool window clipboard actions (scoped to CCG tool window) -->
-        <action id="ClaudeCodeGUI.ChatCopyAction"
-                class="com.github.claudecodegui.action.ChatCopyAction"
+        <action id="AgentGUI.ChatCopyAction"
+                class="com.github.agentgui.action.ChatCopyAction"
                 text="Copy (Chat Window)"
                 description="Copy selected text in Claude chat window">
             <keyboard-shortcut keymap="$default" first-keystroke="ctrl C"/>
             <keyboard-shortcut keymap="Mac OS X" first-keystroke="meta C"/>
             <keyboard-shortcut keymap="macOS" first-keystroke="meta C"/>
         </action>
-        <action id="ClaudeCodeGUI.ChatCutAction"
-                class="com.github.claudecodegui.action.ChatCutAction"
+        <action id="AgentGUI.ChatCutAction"
+                class="com.github.agentgui.action.ChatCutAction"
                 text="Cut (Chat Window)"
                 description="Cut selected text in Claude chat window">
             <keyboard-shortcut keymap="$default" first-keystroke="ctrl X"/>
             <keyboard-shortcut keymap="Mac OS X" first-keystroke="meta X"/>
             <keyboard-shortcut keymap="macOS" first-keystroke="meta X"/>
         </action>
-        <action id="ClaudeCodeGUI.ChatPasteAction"
-                class="com.github.claudecodegui.action.ChatPasteAction"
+        <action id="AgentGUI.ChatPasteAction"
+                class="com.github.agentgui.action.ChatPasteAction"
                 text="Paste (Chat Window)"
                 description="Paste clipboard text in Claude chat window">
             <keyboard-shortcut keymap="$default" first-keystroke="ctrl V"/>
@@ -215,14 +215,14 @@
         </action>
 
         <!-- Chat tool window send action (no default shortcut; dynamically managed by SendShortcutSync) -->
-        <action id="ClaudeCodeGUI.ChatSendAction"
-                class="com.github.claudecodegui.action.ChatSendAction"
+        <action id="AgentGUI.ChatSendAction"
+                class="com.github.agentgui.action.ChatSendAction"
                 text="Send Message (Chat Window)"
                 description="Send message in Claude chat window"/>
 
         <!-- Chat tool window newline action (Shift+Enter always newline; Ctrl+Enter dynamically managed by SendShortcutSync) -->
-        <action id="ClaudeCodeGUI.ChatNewlineAction"
-                class="com.github.claudecodegui.action.ChatNewlineAction"
+        <action id="AgentGUI.ChatNewlineAction"
+                class="com.github.agentgui.action.ChatNewlineAction"
                 text="Insert Newline (Chat Window)"
                 description="Insert newline in Claude chat window input">
             <keyboard-shortcut keymap="$default" first-keystroke="shift ENTER"/>
@@ -231,7 +231,7 @@
         </action>
 
         <!--
-          Hide CC GUI Panel. A standalone action with NO default keyboard shortcut: users may bind one
+          Hide Agent GUI Panel. A standalone action with NO default keyboard shortcut: users may bind one
           in Settings | Keymap to hide the tool window while focus is in the IDE (e.g. the editor).
           NOTE: The Shift+Esc shortcut that hides the panel while focus is INSIDE the webview is
           implemented separately in WebviewInitializer via a JS keydown listener
@@ -239,9 +239,9 @@
           action. Shift+Esc is intentionally not registered here to avoid clashing with the IDE's
           built-in HideActiveWindow shortcut.
         -->
-        <action id="ClaudeCodeGUI.HidePanelAction"
-                class="com.github.claudecodegui.action.HidePanelAction"
-                text="Hide CC GUI Panel"
-                description="Hide the CC GUI tool window panel"/>
+        <action id="AgentGUI.HidePanelAction"
+                class="com.github.agentgui.action.HidePanelAction"
+                text="Hide Agent GUI Panel"
+                description="Hide the Agent GUI tool window panel"/>
     </actions>
 </idea-plugin>

@@ -130,7 +130,7 @@ describe('useWindowCallbacks integration', () => {
     delete (window as unknown as Record<string, unknown>).__pendingDependencyStatus;
     delete window.__pendingBackendTabState;
     delete window.__pendingUsageUpdate;
-    delete window.__CCGUI_RECOVERY_STATE_APPLIED__;
+    delete window.__AGENTGUI_RECOVERY_STATE_APPLIED__;
     delete window.__lastAcceptedMessageCount;
     delete window.__pendingHistoryRefreshMessageCount;
     delete window.__pendingHistoryLoadComplete;
@@ -170,7 +170,7 @@ describe('useWindowCallbacks integration', () => {
     expect(opts.setLongContextEnabled).toHaveBeenCalledWith(true);
     expect(opts.setReasoningEffort).toHaveBeenCalledWith('high');
     expect(opts.setCodexFastMode).toHaveBeenCalledWith('normal');
-    expect(window.__CCGUI_RECOVERY_STATE_APPLIED__).toBe(true);
+    expect(window.__AGENTGUI_RECOVERY_STATE_APPLIED__).toBe(true);
     expect((window.sendToJava as ReturnType<typeof vi.fn>).mock.calls.length).toBe(bridgeCallsBeforeRestore);
   });
 

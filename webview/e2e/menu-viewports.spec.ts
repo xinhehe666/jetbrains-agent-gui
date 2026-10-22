@@ -371,7 +371,7 @@ for (const fontSizeLevel of [3, 6]) {
 test('Codex native auto review is independent of the legacy SDK status', async ({ page }) => {
   await page.addInitScript(() => {
     // JCEF sets this before user changes can be persisted across tabs.
-    window.__CCGUI_PAGE_CONTEXT_READY__ = true;
+    window.__AGENTGUI_PAGE_CONTEXT_READY__ = true;
     const saved = JSON.parse(localStorage.getItem('model-selection-state') || '{}');
     localStorage.setItem('model-selection-state', JSON.stringify({ ...saved, provider: 'codex' }));
   });

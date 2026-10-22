@@ -252,8 +252,8 @@ let latestEditorFontConfig: {
 let latestUiFontConfig: UiFontConfig | null = null;
 let latestCodeFontConfig: CodeFontConfig | null = null;
 
-const UI_FONT_STYLE_ELEMENT_ID = 'cc-gui-ui-font-face-style';
-const CODE_FONT_STYLE_ELEMENT_ID = 'cc-gui-code-font-face-style';
+const UI_FONT_STYLE_ELEMENT_ID = 'agent-gui-ui-font-face-style';
+const CODE_FONT_STYLE_ELEMENT_ID = 'agent-gui-code-font-face-style';
 
 function escapeCssFontName(name: string): string {
   return name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
@@ -367,7 +367,7 @@ function setCodeFontFaceStyle(config: CodeFontConfig) {
 function syncFontFamilies() {
   const root = document.documentElement;
   if (latestUiFontConfig) {
-    root.style.setProperty('--cc-gui-ui-font-family', buildFontFamilyValue({
+    root.style.setProperty('--agent-gui-ui-font-family', buildFontFamilyValue({
       fontFamily: latestUiFontConfig.fontFamily,
       fallbackFonts: latestUiFontConfig.fallbackFonts,
     }, { appendMonospaceFallback: false, appendSansSerifFallback: true }));
@@ -379,7 +379,7 @@ function syncFontFamilies() {
       fontFamily: codeSourceConfig.fontFamily,
       fallbackFonts: codeSourceConfig.fallbackFonts ?? latestEditorFontConfig?.fallbackFonts,
     });
-    root.style.setProperty('--cc-gui-code-font-family', codeFontFamilyValue);
+    root.style.setProperty('--agent-gui-code-font-family', codeFontFamilyValue);
     // Keep legacy variable in sync so existing components continue to pick up the effective code font.
     root.style.setProperty('--idea-editor-font-family', codeFontFamilyValue);
   }
@@ -393,7 +393,7 @@ function applyEditorTypographyConfig(config: {
 }) {
   const root = document.documentElement;
   latestEditorFontConfig = config;
-  root.style.setProperty('--cc-gui-editor-font-family', buildFontFamilyValue(config));
+  root.style.setProperty('--agent-gui-editor-font-family', buildFontFamilyValue(config));
   root.style.setProperty('--idea-editor-font-size', `${config.fontSize}px`);
   root.style.setProperty('--idea-editor-line-spacing', String(config.lineSpacing));
   syncFontFamilies();

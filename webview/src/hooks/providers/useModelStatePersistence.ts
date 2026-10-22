@@ -527,7 +527,7 @@ export function useModelStatePersistence(options: UseModelStatePersistenceOption
           // Native watchdog reload reuses the original HTML snapshot. Java
           // pushes the current Session state after frontend_ready; echoing the
           // stale boot snapshot would route the existing transcript incorrectly.
-          if (window.__CCGUI_RECOVERY_RELOAD__ === true) {
+          if (window.__AGENTGUI_RECOVERY_RELOAD__ === true) {
             return;
           }
           sendBridgeEvent('set_provider', restoredProvider);
@@ -595,9 +595,9 @@ export function useModelStatePersistence(options: UseModelStatePersistenceOption
     let retryCount = 0;
 
     const persistWhenPageContextIsReady = () => {
-      const pageContextPending = window.__CCGUI_PAGE_CONTEXT_READY__ !== true;
-      const recoveryStatePending = window.__CCGUI_RECOVERY_RELOAD__ === true
-        && window.__CCGUI_RECOVERY_STATE_APPLIED__ !== true;
+      const pageContextPending = window.__AGENTGUI_PAGE_CONTEXT_READY__ !== true;
+      const recoveryStatePending = window.__AGENTGUI_RECOVERY_RELOAD__ === true
+        && window.__AGENTGUI_RECOVERY_STATE_APPLIED__ !== true;
 
       // React may mount before onLoadEnd/fallback establishes the runtime page
       // context. Never publish provisional HTML/default state to the localStorage

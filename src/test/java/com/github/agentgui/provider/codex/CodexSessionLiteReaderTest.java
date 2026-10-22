@@ -1,0 +1,208 @@
+package com.github.agentgui.provider.codex;
+
+import com.github.agentgui.provider.common.SessionLiteReader;
+import org.junit.Test;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
+public class CodexSessionLiteReaderTest {
+
+    private final CodexSessionLiteReader reader = new CodexSessionLiteReader();
+
+    @Test
+    public void readSessionLite_codexSession() throws IOException {
+        Path tempDir = Files.createTempDirectory("codex-lite-test");
+        try {
+            Path tempFile = tempDir.resolve("thread_abc123def456.jsonl");
+            String content = "{\"type\":\"session_meta\",\"payload\":{\"id\":\"thread_abc123def456\",\"cwd\":\"/workspace/demo\",\"timestamp\":\"2026-03-10T10:00:00Z\",\"source\":\"exec\"}}\n" +
+                    "{\"type\":\"event_msg\",\"payload\":{\"type\":\"user_message\",\"message\":\"Hello Codex\"},\"timestamp\":\"2026-03-10T10:01:00Z\"}\n" +
+                    "{\"type\":\"response_item\",\"payload\":{\"type\":\"message\"},\"timestamp\":\"2026-03-10T10:02:00Z\"}\n";
+            Files.writeString(tempFile, content);
+
+            CodexSessionLiteReader.CodexLiteSessionInfo info = reader.readSessionLite(tempFile);
+            assertNotNull(info);
+            assertEquals("thread_abc123def456", info.sessionId);
+            assertNotNull(info.summary);
+            assertTrue(info.messageCount >= 1);
+            assertEquals("/workspace/demo", info.cwd);
+        } finally {
+            Files.walk(tempDir).sorted((a, b) -> b.compareTo(a)).forEach(p -> {
+                try { Files.deleteIfExists(p); } catch (IOException ignored) {}
+            });
+        }
+    }
+
+    @Test
+    public void parseSessionInfoFromLite_extractsTitle() {
+        String sessionId = "thread_abc123def456";
+        SessionLiteReader.LiteSessionFile lite = new SessionLiteReader.LiteSessionFile(
+                System.currentTimeMillis(), 1000,
+                "{\"type\":\"session_meta\",\"payload\":{\"id\":\"thread_abc123def456\",\"cwd\":\"/workspace\",\"timestamp\":\"2026-03-10T10:00:00Z\"}}\n" +
+                        "{\"type\":\"event_msg\",\"payload\":{\"type\":\"user_message\",\"message\":\"What is Python?\"}}\n",
+                ""
+        );
+
+        CodexSessionLiteReader.CodexLiteSessionInfo info = reader.parseSessionInfoFromLite(sessionId, lite);
+        assertNotNull(info);
+        assertEquals("thread_abc123def456", info.sessionId);
+        assertNotNull(info.summary);
+        assertTrue(info.summary.contains("Python"));
+        assertEquals("/workspace", info.cwd);
+    }
+
+    @Test
+    public void parseSessionInfoFromLite_noTitleReturnsNull() {
+        String sessionId = "thread_abc123def456";
+        SessionLiteReader.LiteSessionFile lite = new SessionLiteReader.LiteSessionFile(
+                System.currentTimeMillis(), 1000,
+                "{\"type\":\"session_meta\",\"payload\":{\"id\":\"thread_abc123def456\"}}\n" +
+                        "{\"type\":\"response_item\",\"payload\":{\"type\":\"message\"}}\n",
+                ""
+        );
+
+        assertNull(reader.parseSessionInfoFromLite(sessionId, lite));
+    }
+
+    @Test
+    public void parseSessionInfoFromLite_subagentReturnsNull() {
+        String sessionId = "thread_subagent123456";
+        SessionLiteReader.LiteSessionFile lite = new SessionLiteReader.LiteSessionFile(
+                System.currentTimeMillis(), 1000,
+                "{\"type\":\"session_meta\",\"payload\":{\"id\":\"thread_subagent123456\","
+                        + "\"cwd\":\"/workspace\",\"source\":{\"subagent\":{\"thread_spawn\":{"
+                        + "\"parent_thread_id\":\"thread_parent123456\",\"depth\":1}}}}}\n"
+                        + "{\"type\":\"event_msg\",\"payload\":{\"type\":\"user_message\","
+                        + "\"message\":\"Inherited parent context\"}}\n",
+                ""
+        );
+
+        assertNull(reader.parseSessionInfoFromLite(sessionId, lite));
+    }
+
+    @Test
+    public void parseSessionInfoFromLite_stripsSystemTags() {
+        String sessionId = "thread_abc123def456";
+        SessionLiteReader.LiteSessionFile lite = new SessionLiteReader.LiteSessionFile(
+                System.currentTimeMillis(), 1000,
+                "{\"type\":\"event_msg\",\"payload\":{\"type\":\"user_message\",\"message\":\"<agents-instructions>some content</agents-instructions>Real question here\"}}\n",
+                ""
+        );
+
+        CodexSessionLiteReader.CodexLiteSessionInfo info = reader.parseSessionInfoFromLite(sessionId, lite);
+        assertNotNull(info);
+        assertTrue(info.summary.contains("Real question here"));
+        assertTrue(!info.summary.contains("agents-instructions"));
+    }
+
+    /**
+     * Regression test for #1809: the Codex CLI injects a <recommended_plugins>
+     * context block as the FIRST user message; the title must come from the
+     * next real user message instead of the injection.
+     */
+    @Test
+    public void parseSessionInfoFromLite_skipsRecommendedPluginsInjection() {
+        String sessionId = "thread_abc123def456";
+        SessionLiteReader.LiteSessionFile lite = new SessionLiteReader.LiteSessionFile(
+                System.currentTimeMillis(), 1000,
+                "{\"type\":\"response_item\",\"payload\":{\"type\":\"message\",\"role\":\"user\",\"content\":[{\"type\":\"input_text\",\"text\":\"<recommended_plugins>Here is a list of plugins you may want to install</recommended_plugins>\"}]}}\n"
+                        + "{\"type\":\"response_item\",\"payload\":{\"type\":\"message\",\"role\":\"user\",\"content\":[{\"type\":\"input_text\",\"text\":\"帮我把这个函数重构为异步版本\"}]}}\n",
+                ""
+        );
+
+        CodexSessionLiteReader.CodexLiteSessionInfo info = reader.parseSessionInfoFromLite(sessionId, lite);
+        assertNotNull(info);
+        assertTrue("title must come from the real user message",
+                info.summary.contains("帮我把这个函数重构为异步版本"));
+        assertTrue("title must not leak the injected context block",
+                !info.summary.contains("recommended_plugins"));
+    }
+
+    /**
+     * Variant of the #1809 regression where the injected block and the real
+     * question live in the SAME message. The two defense layers behave
+     * differently here: with the sanitizer (layer 1) the tag block is stripped
+     * and THIS message's question becomes the title; if only the
+     * isSystemMessage prefix fallback (layer 2) existed, the whole message
+     * would be filtered and the title would fall through to the next message.
+     * This test is therefore sensitive to a regression of layer 1 alone.
+     */
+    @Test
+    public void parseSessionInfoFromLite_injectionAndQuestionInSameMessage() {
+        String sessionId = "thread_abc123def456";
+        SessionLiteReader.LiteSessionFile lite = new SessionLiteReader.LiteSessionFile(
+                System.currentTimeMillis(), 1000,
+                "{\"type\":\"response_item\",\"payload\":{\"type\":\"message\",\"role\":\"user\",\"content\":[{\"type\":\"input_text\",\"text\":\"<recommended_plugins>Here is a list of plugins</recommended_plugins>帮我优化这个SQL查询\"}]}}\n"
+                        + "{\"type\":\"response_item\",\"payload\":{\"type\":\"message\",\"role\":\"user\",\"content\":[{\"type\":\"input_text\",\"text\":\"第二条消息不应该成为标题\"}]}}\n",
+                ""
+        );
+
+        CodexSessionLiteReader.CodexLiteSessionInfo info = reader.parseSessionInfoFromLite(sessionId, lite);
+        assertNotNull(info);
+        assertTrue("title must come from the first message's real question (sanitizer stripped the injection)",
+                info.summary.contains("帮我优化这个SQL查询"));
+        assertTrue("the second message must not have become the title (would mean layer 1 regressed)",
+                !info.summary.contains("第二条消息不应该成为标题"));
+        assertTrue("title must not leak the injected context block",
+                !info.summary.contains("recommended_plugins"));
+    }
+
+    @Test
+    public void parseSessionInfoFromLite_responseItemUserMessage() {
+        String sessionId = "01a0229e-d4d9-7850-876d-1a3b36867785";
+        SessionLiteReader.LiteSessionFile lite = new SessionLiteReader.LiteSessionFile(
+                System.currentTimeMillis(), 1000,
+                "{\"type\":\"session_meta\",\"payload\":{\"id\":\"01a0229e-d4d9-7850-876d-1a3b36867785\",\"cwd\":\"/workspace\",\"timestamp\":\"2026-08-21T12:40:29Z\"}}\n"
+                        + "{\"type\":\"response_item\",\"payload\":{\"type\":\"message\",\"role\":\"user\",\"content\":[{\"type\":\"input_text\",\"text\":\"hello from Codex 0.149\"}]}}\n",
+                ""
+        );
+
+        CodexSessionLiteReader.CodexLiteSessionInfo info = reader.parseSessionInfoFromLite(sessionId, lite);
+        assertNotNull(info);
+        assertEquals("01a0229e-d4d9-7850-876d-1a3b36867785", info.sessionId);
+        assertTrue(info.summary.contains("hello from Codex 0.149"));
+        assertEquals("/workspace", info.cwd);
+    }
+
+    @Test
+    public void readSessionLite_rolloutFilenameWithResponseItemUserMessage() throws IOException {
+        Path tempDir = Files.createTempDirectory("codex-lite-rollout-test");
+        try {
+            Path tempFile = tempDir.resolve("rollout-2026-08-21T12-40-29-01a0229e-d4d9-7850-876d-1a3b36867785.jsonl");
+            String content = "{\"type\":\"session_meta\",\"payload\":{\"id\":\"01a0229e-d4d9-7850-876d-1a3b36867785\",\"cwd\":\"/workspace/demo\",\"timestamp\":\"2026-08-21T12:40:29Z\",\"source\":\"cli\"}}\n"
+                    + "{\"type\":\"response_item\",\"payload\":{\"type\":\"message\",\"role\":\"user\",\"content\":[{\"type\":\"input_text\",\"text\":\"hello\"}]}}\n"
+                    + "{\"type\":\"response_item\",\"payload\":{\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"hi\"}]}}\n";
+            Files.writeString(tempFile, content);
+
+            CodexSessionLiteReader.CodexLiteSessionInfo info = reader.readSessionLite(tempFile);
+            assertNotNull(info);
+            assertEquals("01a0229e-d4d9-7850-876d-1a3b36867785", info.sessionId);
+            assertTrue(info.summary.contains("hello"));
+            assertEquals("/workspace/demo", info.cwd);
+        } finally {
+            Files.walk(tempDir).sorted((a, b) -> b.compareTo(a)).forEach(p -> {
+                try { Files.deleteIfExists(p); } catch (IOException ignored) {}
+            });
+        }
+    }
+
+    @Test
+    public void readSessionLite_invalidSessionId() throws IOException {
+        Path tempDir = Files.createTempDirectory("codex-lite-test");
+        try {
+            Path tempFile = tempDir.resolve("invalid-name.jsonl");
+            Files.writeString(tempFile, "{\"type\":\"session_meta\"}\n");
+            assertNull(reader.readSessionLite(tempFile));
+        } finally {
+            Files.walk(tempDir).sorted((a, b) -> b.compareTo(a)).forEach(p -> {
+                try { Files.deleteIfExists(p); } catch (IOException ignored) {}
+            });
+        }
+    }
+}

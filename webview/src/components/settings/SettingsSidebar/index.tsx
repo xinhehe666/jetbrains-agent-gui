@@ -22,7 +22,7 @@ const sidebarItems: SidebarItem[] = [
   { key: 'prompts', icon: 'codicon-notebook', labelKey: 'settings.prompts' },
   { key: 'skills', icon: 'codicon-book', labelKey: 'settings.skills' },
   { key: 'other', icon: 'codicon-ellipsis', labelKey: 'settings.other.title' },
-  { key: 'community', icon: 'codicon-comment-discussion', labelKey: 'settings.community' },
+  { key: 'community', icon: 'codicon-link', labelKey: 'settings.resources' },
 ];
 
 interface SettingsSidebarProps {

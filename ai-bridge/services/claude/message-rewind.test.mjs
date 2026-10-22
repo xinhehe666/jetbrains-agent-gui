@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 // runs in a child process with HOME pointed at a temp dir (same pattern as
 // the closed-runtime and [1m]-toggle child tests).
 test('rewind candidates exclude the CLI interruption marker rows', () => {
-  const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-gui-rewind-'));
+  const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-gui-rewind-'));
   try {
     const childPath = fileURLToPath(
       new URL('./message-rewind.child.mjs', import.meta.url)

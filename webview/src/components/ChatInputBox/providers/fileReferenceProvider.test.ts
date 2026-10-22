@@ -49,7 +49,7 @@ describe('fileReferenceProvider matching', () => {
   it('does not match query against absolute paths', () => {
     const f = file({
       name: 'Dockerfile',
-      path: '/Users/zhukunpeng/Desktop/CC GUI 项目/jetbrains-cc-gui/Dockerfile',
+      path: '/Users/zhukunpeng/Desktop/Agent GUI 项目/jetbrains-cc-gui/Dockerfile',
     });
     expect(fileMatchesQuery(f, 'b')).toBe(false);
     expect(scoreFileMatch(f, 'b')).toBe(0);

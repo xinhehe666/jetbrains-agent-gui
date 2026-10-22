@@ -1,17 +1,17 @@
 <idea-plugin>
     <!--
-    Terminal-specific features for CC GUI（Claude or Codex）.
+    Terminal-specific features for Agent GUI（Claude or Codex）.
     This configuration is only loaded when the Terminal plugin is available.
     -->
     <extensions defaultExtensionNs="com.intellij">
         <!-- Monitor Terminal Output - Only active when Terminal plugin is installed -->
-        <postStartupActivity implementation="com.github.claudecodegui.terminal.TerminalMonitorService"/>
+        <postStartupActivity implementation="com.github.agentgui.terminal.TerminalMonitorService"/>
     </extensions>
 
     <actions>
-        <action id="ClaudeCodeGUI.SendTerminalSelectionToInputAction"
-                class="com.github.claudecodegui.terminal.SendTerminalSelectionToInputAction"
-                icon="/icons/cc-gui-icon.svg">
+        <action id="AgentGUI.SendTerminalSelectionToInputAction"
+                class="com.github.agentgui.terminal.SendTerminalSelectionToInputAction"
+                icon="/icons/agent-gui-icon.svg">
             <!-- Only the EditorPopupMenu is registered statically because it exists
                  across all supported IDE builds. Terminal.OutputContextMenu and
                  Terminal.PromptContextMenu were introduced in later IDE versions and

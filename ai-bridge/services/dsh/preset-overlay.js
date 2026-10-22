@@ -2,7 +2,7 @@
  * DSH agent-preset → headless patch overlay conversion.
  *
  * The DeepSeek Harness web app offers four agent presets (标准/极简/PTC/创造)
- * that are composed per-session by the `dsh-agent-presets` plugin. The CC GUI
+ * that are composed per-session by the `dsh-agent-presets` plugin. The Agent GUI
  * dsh integration runs `dsh --profile headless`, whose base composition ships
  * the full standard toolset and has no `agent-presets` row — so the presets
  * are NOT available to it out of the box.
@@ -78,7 +78,7 @@ export function discoverUserPresetIds() {
   return ids.sort();
 }
 /**
- * All preset ids the CC GUI accepts: the shipped/curated set plus whatever
+ * All preset ids the Agent GUI accepts: the shipped/curated set plus whatever
  * the user has installed under <dshHome>/.agent-presets/ (deduplicated).
  *
  * @returns {string[]}
@@ -88,7 +88,7 @@ export function getKnownDshPresetIds() {
 }
 
 /**
- * Whether a preset id is known to the CC GUI (shipped, curated, or
+ * Whether a preset id is known to the Agent GUI (shipped, curated, or
  * user-installed under <dshHome>/.agent-presets/).
  *
  * @param {string} presetId

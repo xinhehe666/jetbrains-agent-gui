@@ -230,7 +230,7 @@ function ensureSessionService(stdinData, { nativeEnvironmentDependencies = {} } 
       env, sensitiveEnvNames,
       clientInfo: {
         name: 'codemoss_intellij',
-        title: 'CC GUI',
+        title: 'Agent GUI',
         version: String(stdinData?.pluginVersion ?? '0.0.0'),
       },
     });

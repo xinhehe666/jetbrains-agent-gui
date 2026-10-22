@@ -21,7 +21,7 @@ function loadSampleLines(name) {
 test('buildOpenCodeArgs places prompt before -f so yargs does not swallow it', () => {
   const args = buildOpenCodeArgs({
     message: '这是什么',
-    imagePaths: ['/tmp/cc-gui-cli-images/a.png'],
+    imagePaths: ['/tmp/agent-gui-cli-images/a.png'],
   });
   assert.deepEqual(args, [
     'run',
@@ -30,7 +30,7 @@ test('buildOpenCodeArgs places prompt before -f so yargs does not swallow it', (
     '--thinking',
     '这是什么',
     '-f',
-    '/tmp/cc-gui-cli-images/a.png',
+    '/tmp/agent-gui-cli-images/a.png',
   ]);
   const promptIdx = args.indexOf('这是什么');
   const fileFlagIdx = args.indexOf('-f');

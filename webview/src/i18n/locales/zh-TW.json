@@ -475,7 +475,7 @@
       "prompt": {
         "label": "Additional Prompt",
         "placeholder": "Add your extra requirements here, e.g., generate commit in English, include issue number, etc...",
-        "hint": "The plugin has built-in CCG Commits specification prompts. Content you add here will be used as additional requirements, and AI will prioritize your instructions."
+        "hint": "The plugin has built-in Agent GUI Commits specification prompts. Content you add here will be used as additional requirements, and AI will prioritize your instructions."
       },
       "projectPrompt": {
         "label": "專案級附加提示詞",
@@ -549,27 +549,11 @@
       "expand": "Expand Sidebar",
       "collapse": "Collapse Sidebar"
     },
-    "community": "官方交流群",
-    "communityDesc": "掃描下方二維碼加入官方微信交流群，獲取最新資訊和技術支援",
-    "communityQrTip": "使用微信掃一掃加入交流群",
-    "communityQrAlt": "官方微信交流群二維碼",
-    "socialDocs": "官方文檔",
-    "socialTitle": "關注我們",
-    "socialGithub": "GitHub 開源倉庫，歡迎 Star",
-    "socialX": "X（Twitter）@ZPeng31310",
-    "socialZhihu": "知乎 @vscodeai",
-    "socialXiaohongshu": "小紅書",
-    "socialDouyin": "抖音，滑鼠懸停掃碼關注",
-    "socialYoutube": "YouTube 頻道 @昆鹏马上优化",
-    "douyinQrAlt": "抖音二維碼",
-    "douyinId": "抖音號：nengyongai",
-    "douyinCopied": "抖音號已複製到剪貼簿",
-    "douyinCopyFailed": "複製失敗，請手動複製",
-    "sponsor": "贊助支持",
-    "sponsorDesc": "如果這個項目對你有幫助，歡迎贊助支持，你的支持是我持續維護的動力！",
-    "alipay": "支付寶",
-    "wechatPay": "微信",
-    "paypal": "PayPal",
+    "resources": "資源",
+    "socialDocs": "使用文檔",
+    "socialTitle": "Agent GUI 資源",
+    "socialDesc": "本分支的使用文檔、問題回饋與版本記錄。",
+    "socialIssues": "問題回饋",
     "provider": {
       "currentConfig": "目前ClaudeCode配置",
       "loading": "載入中...",
@@ -652,7 +636,7 @@
             "proxyConfigCodeLabel": "~/.claude/settings.json",
             "proxyConfigCode": "{\n  \"env\": {\n    \"HTTP_PROXY\": \"http://127.0.0.1:7897\",\n    \"HTTPS_PROXY\": \"http://127.0.0.1:7897\"\n  }\n}",
             "issuePrefix": "如果還是不行，可以去GitHub留言排查：",
-            "issueUrl": "https://github.com/zhukunpenglinyutong/idea-claude-code-gui/issues"
+            "issueUrl": "https://github.com/xinhehe666/jetbrains-agent-gui/issues"
           },
           "codex": {
             "title": "Codex 訂閱制帳號使用方式",
@@ -666,7 +650,7 @@
             "proxyConfigCodeLabel": "",
             "proxyConfigCode": "",
             "issuePrefix": "如果還是不行，可以去GitHub留言排查：",
-            "issueUrl": "https://github.com/zhukunpenglinyutong/idea-claude-code-gui/issues"
+            "issueUrl": "https://github.com/xinhehe666/jetbrains-agent-gui/issues"
           }
         }
       },
@@ -1139,7 +1123,7 @@
   },
   "config": {
     "clickToCopy": "點選複製",
-    "officialDocs": "官方文件",
+    "officialDocs": "使用文檔",
     "switch": "切換",
     "switchProvider": "切換供應商",
     "runtimeProvider": {

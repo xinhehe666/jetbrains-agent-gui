@@ -45,11 +45,11 @@ test('runModelsViaTempRedirect uses a private mkdtemp directory and cleans it up
   // exclusively-owned temp directory, and that directory must not be left
   // behind — even when the spawn fails (bogus bin here).
   const leftoversBefore = readdirSync(tmpdir())
-    .filter((name) => name.startsWith('cc-gui-opencode-models-'));
+    .filter((name) => name.startsWith('agent-gui-opencode-models-'));
   const result = runModelsViaTempRedirect('/nonexistent/opencode-bin', { ...process.env });
   assert.equal(result, '', 'a failed spawn must yield empty output');
   const leftoversAfter = readdirSync(tmpdir())
-    .filter((name) => name.startsWith('cc-gui-opencode-models-'));
+    .filter((name) => name.startsWith('agent-gui-opencode-models-'));
   assert.deepEqual(leftoversAfter, leftoversBefore,
     'the private temp directory must be removed after use');
 });

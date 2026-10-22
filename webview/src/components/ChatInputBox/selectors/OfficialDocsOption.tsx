@@ -7,10 +7,10 @@ import {
 } from './selectorStyles';
 
 const DOCS_URLS: Record<string, string> = {
-  zh: 'https://docs.mossx.ai/jetbrains',
-  'zh-TW': 'https://docs.mossx.ai/zh-Hant/jetbrains/index',
+  zh: 'https://github.com/xinhehe666/jetbrains-agent-gui#readme',
+  'zh-TW': 'https://github.com/xinhehe666/jetbrains-agent-gui#readme',
 };
-const DEFAULT_DOCS_URL = 'https://docs.mossx.ai/en/jetbrains/index';
+const DEFAULT_DOCS_URL = 'https://github.com/xinhehe666/jetbrains-agent-gui#readme';
 
 const resolveDocsUrl = (language: string): string => {
   if (language.startsWith('zh-TW') || language.startsWith('zh-Hant')) {
@@ -29,7 +29,7 @@ interface OfficialDocsOptionProps {
 
 /**
  * OfficialDocsOption - Footer row of the ConfigSelect dropdown linking to the
- * localized official documentation.
+ * documentation for this fork.
  */
 export const OfficialDocsOption = ({ onClose, onMouseEnter }: OfficialDocsOptionProps) => {
   const { t, i18n } = useTranslation();

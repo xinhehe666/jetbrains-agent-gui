@@ -463,7 +463,7 @@
       "prompt": {
         "label": "Additional Prompt",
         "placeholder": "Add your extra requirements here, e.g., generate commit in English, include issue number, etc...",
-        "hint": "The plugin has built-in CCG Commits specification prompts. Content you add here will be used as additional requirements, and AI will prioritize your instructions."
+        "hint": "The plugin has built-in Agent GUI Commits specification prompts. Content you add here will be used as additional requirements, and AI will prioritize your instructions."
       },
       "projectPrompt": {
         "label": "प्रोजेक्ट-विशिष्ट अतिरिक्त प्रॉम्प्ट",
@@ -532,27 +532,11 @@
       "expand": "Expand Sidebar",
       "collapse": "Collapse Sidebar"
     },
-    "community": "आधिकारिक समुदाय",
-    "communityDesc": "नवीनतम जानकारी और तकनीकी सहायता के लिए आधिकारिक WeChat समूह में शामिल होने के लिए नीचे QR कोड स्कैन करें",
-    "communityQrTip": "WeChat से स्कैन करके समुदाय में शामिल हों",
-    "communityQrAlt": "आधिकारिक WeChat समुदाय QR कोड",
-    "socialDocs": "आधिकारिक दस्तावेज़",
-    "socialTitle": "हमें फॉलो करें",
-    "socialGithub": "GitHub रिपॉजिटरी — Star करें!",
-    "socialX": "X (Twitter) @ZPeng31310",
-    "socialZhihu": "Zhihu @vscodeai",
-    "socialXiaohongshu": "Xiaohongshu (RED)",
-    "socialDouyin": "Douyin — फॉलो करने के लिए होवर करके स्कैन करें",
-    "socialYoutube": "YouTube चैनल",
-    "douyinQrAlt": "Douyin QR कोड",
-    "douyinId": "Douyin ID: nengyongai",
-    "douyinCopied": "Douyin ID क्लिपबोर्ड पर कॉपी हो गया",
-    "douyinCopyFailed": "कॉपी करने में विफल। कृपया मैन्युअल रूप से कॉपी करें।",
-    "sponsor": "Sponsor",
-    "sponsorDesc": "If this project helps you, consider sponsoring to support ongoing maintenance!",
-    "alipay": "Alipay",
-    "wechatPay": "WeChat Pay",
-    "paypal": "PayPal",
+    "resources": "संसाधन",
+    "socialDocs": "दस्तावेज़",
+    "socialTitle": "Agent GUI संसाधन",
+    "socialDesc": "इस फ़ोर्क के दस्तावेज़, समस्या ट्रैकिंग और रिलीज़ इतिहास।",
+    "socialIssues": "समस्या रिपोर्ट करें",
     "provider": {
       "currentConfig": "वर्तमान ClaudeCode कॉन्फ़िगरेशन",
       "loading": "लोड हो रहा है...",
@@ -635,7 +619,7 @@
             "proxyConfigCodeLabel": "~/.claude/settings.json",
             "proxyConfigCode": "{\n  \"env\": {\n    \"HTTP_PROXY\": \"http://127.0.0.1:7897\",\n    \"HTTPS_PROXY\": \"http://127.0.0.1:7897\"\n  }\n}",
             "issuePrefix": "यदि यह अभी भी काम नहीं करता, तो GitHub पर समस्या रिपोर्ट करें: ",
-            "issueUrl": "https://github.com/zhukunpenglinyutong/idea-claude-code-gui/issues"
+            "issueUrl": "https://github.com/xinhehe666/jetbrains-agent-gui/issues"
           },
           "codex": {
             "title": "Codex सदस्यता खाता सेटअप",
@@ -649,7 +633,7 @@
             "proxyConfigCodeLabel": "",
             "proxyConfigCode": "",
             "issuePrefix": "यदि यह अभी भी काम नहीं करता, तो GitHub पर समस्या रिपोर्ट करें: ",
-            "issueUrl": "https://github.com/zhukunpenglinyutong/idea-claude-code-gui/issues"
+            "issueUrl": "https://github.com/xinhehe666/jetbrains-agent-gui/issues"
           }
         }
       },
@@ -1098,7 +1082,7 @@
   },
   "config": {
     "clickToCopy": "कॉपी करने के लिए क्लिक करें",
-    "officialDocs": "आधिकारिक दस्तावेज़",
+    "officialDocs": "दस्तावेज़",
     "switch": "स्विच",
     "switchProvider": "प्रदाता स्विच करें",
     "runtimeProvider": {

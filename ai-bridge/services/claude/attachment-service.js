@@ -9,7 +9,7 @@ import path from 'path';
 import os from 'os';
 
 // Retain cleanup for image files written by older plugin versions.
-const TEMP_IMAGE_SUBDIR = 'cc-gui-images';
+const TEMP_IMAGE_SUBDIR = 'agent-gui-images';
 // Files older than 24h are removed at daemon startup to bound disk growth.
 const TEMP_IMAGE_TTL_MS = 24 * 60 * 60 * 1000;
 

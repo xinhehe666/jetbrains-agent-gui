@@ -71,7 +71,7 @@ test('reads a large attachment through the bridge stdin protocol without truncat
 });
 
 test('retains legacy attachment-file loading while preferring explicit stdin attachments', async t => {
-  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'cc-gui-attachment-test-'));
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'agent-gui-attachment-test-'));
   const file = path.join(directory, 'attachments.json');
   const previous = process.env.CLAUDE_ATTACHMENTS_FILE;
   t.after(async () => {
@@ -94,8 +94,8 @@ test('retains legacy attachment-file loading while preferring explicit stdin att
 });
 
 test('cleans legacy temporary images without deleting recent uploads', async t => {
-  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'cc-gui-image-cleanup-test-'));
-  const images = path.join(directory, 'cc-gui-images');
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'agent-gui-image-cleanup-test-'));
+  const images = path.join(directory, 'agent-gui-images');
   const stale = path.join(images, 'stale.png');
   const recent = path.join(images, 'recent.png');
   t.mock.method(os, 'tmpdir', () => directory);

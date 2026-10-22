@@ -643,7 +643,7 @@
       "prompt": {
         "label": "Additional Prompt",
         "placeholder": "Add your extra requirements here, e.g., generate commit in English, include issue number, etc...",
-        "hint": "The plugin has built-in CCG Commits specification prompts. Content you add here will be used as additional requirements, and AI will prioritize your instructions."
+        "hint": "The plugin has built-in Agent GUI Commits specification prompts. Content you add here will be used as additional requirements, and AI will prioritize your instructions."
       },
       "projectPrompt": {
         "label": "Project-specific Additional Prompt",
@@ -712,29 +712,14 @@
       "expand": "Expand Sidebar",
       "collapse": "Collapse Sidebar"
     },
-    "community": "Community",
-    "communityDesc": "Scan the QR code below to join the official WeChat group for the latest news and technical support",
+    "resources": "Resources",
     "versionHistory": "Version History",
     "versionHistoryDesc": "View all version update records",
-    "communityQrTip": "Scan with WeChat to join the community",
-    "communityQrAlt": "Official WeChat community QR code",
-    "socialDocs": "Official Documentation",
-    "socialTitle": "Follow Us",
-    "socialGithub": "GitHub repository — star us!",
-    "socialX": "X (Twitter) @ZPeng31310",
-    "socialZhihu": "Zhihu @vscodeai",
-    "socialXiaohongshu": "Xiaohongshu (RED)",
-    "socialDouyin": "Douyin — hover to scan and follow",
-    "socialYoutube": "YouTube channel",
-    "douyinQrAlt": "Douyin QR code",
-    "douyinId": "Douyin ID: nengyongai",
-    "douyinCopied": "Douyin ID copied to clipboard",
-    "douyinCopyFailed": "Failed to copy. Please copy manually.",
-    "sponsor": "Sponsor",
-    "sponsorDesc": "If this project helps you, consider sponsoring to support ongoing maintenance!",
-    "alipay": "Alipay",
-    "wechatPay": "WeChat Pay",
-    "paypal": "PayPal",
+    "socialDocs": "Documentation",
+    "socialTitle": "Agent GUI Resources",
+    "socialDesc": "Documentation, issue tracking, and release history for this fork.",
+    "socialGithub": "GitHub repository",
+    "socialIssues": "Report an issue",
     "provider": {
       "currentConfig": "Current ClaudeCode Configuration",
       "loading": "Loading...",
@@ -835,7 +820,7 @@
             "proxyConfigCodeLabel": "~/.claude/settings.json",
             "proxyConfigCode": "{\n  \"env\": {\n    \"HTTP_PROXY\": \"http://127.0.0.1:7897\",\n    \"HTTPS_PROXY\": \"http://127.0.0.1:7897\"\n  }\n}",
             "issuePrefix": "If it still doesn't work, please report an issue on GitHub: ",
-            "issueUrl": "https://github.com/zhukunpenglinyutong/idea-claude-code-gui/issues"
+            "issueUrl": "https://github.com/xinhehe666/jetbrains-agent-gui/issues"
           },
           "codex": {
             "title": "Codex Subscription Account Setup",
@@ -849,7 +834,7 @@
             "proxyConfigCodeLabel": "",
             "proxyConfigCode": "",
             "issuePrefix": "If it still doesn't work, please report an issue on GitHub: ",
-            "issueUrl": "https://github.com/zhukunpenglinyutong/idea-claude-code-gui/issues"
+            "issueUrl": "https://github.com/xinhehe666/jetbrains-agent-gui/issues"
           }
         }
       },
@@ -1306,7 +1291,7 @@
   },
   "config": {
     "clickToCopy": "Click to copy",
-    "officialDocs": "Official Docs",
+    "officialDocs": "Documentation",
     "switch": "Switch",
     "switchProvider": "Switch provider",
     "runtimeProvider": {

@@ -168,7 +168,7 @@ export const CHANGELOG_DATA: ChangelogEntry[] = [
 - Update the model lineup: add **Claude Opus 5.5** (200K / 1M context, \$4/\$20, reasoning-effort support), add **GPT-6 Sol** (\$2/\$10) and **GPT-6 Luna** (\$0.1/\$0.5) with 1.05M context, and drop the retired **GPT-5.4** (by @zhukunpenglinyutong)
 
 🔧 Improvements
-- Make **Git4Idea an optional dependency**: the Commit AI action now lives in a \`git-features.xml\` loaded only when the bundled Git plugin is present, so CC GUI installs cleanly in Git-less IDE configurations (the Commit AI button simply does not appear) (by @zhukunpenglinyutong, @gadfly3173)
+- Make **Git4Idea an optional dependency**: the Commit AI action now lives in a \`git-features.xml\` loaded only when the bundled Git plugin is present, so Agent GUI installs cleanly in Git-less IDE configurations (the Commit AI button simply does not appear) (by @zhukunpenglinyutong, @gadfly3173)
 - **Align chat font sizes with the IDE and default to 100%**: IDE-reported sizes are converted to logical points via \`UISettings.getDefFontScale()\` so HiDPI displays no longer render chat text larger than the editor, and the level table, valid range and default are consolidated into \`utils/fontScale.ts\` (the level is now persisted only on an explicit pick) (by @gadfly3173)
 - **Serialize streaming and history loads on the shared transcript**: every message-list reader and writer takes a \`SessionState.messageStateLock\`, history loads carry an ownership token so a superseded load can neither apply a stale result nor strand the loading flag, transport snapshots are captured under the lock, and the webview event queue is gated on frontend readiness with bounded retries (by @gadfly3173, @zhukunpenglinyutong)
 - Continue the **webview React-health cleanup**: extract \`nodeProcessDropdownLayout\`, \`providerNotConfigured\`, \`convertAtFileRefsToLinks\` and \`sampleAnchorItems\` into dedicated modules, split the token-tracker dashboard contexts/utilities into their own files so Fast Refresh keeps state, and replace render-time ref mutations with render-scoped values or effect events (by @zhukunpenglinyutong)
@@ -296,7 +296,7 @@ export const CHANGELOG_DATA: ChangelogEntry[] = [
 - Add an **open-source banner with a Star button** to the changelog dialog — clicking Star opens the GitHub repository directly in the system browser (by @zhukunpenglinyutong)
 - Allow **hiding CLI providers from the provider switcher**: an eye toggle on each card in Settings → Providers → CLI removes the provider from the switcher dropdown (a hidden active provider keeps working), and the provider dropdown gains a **CLI Settings** footer entry that deep-links into that page (by @zhukunpenglinyutong)
 - Rework the **settings community section** into a social-links row (GitHub / X / Zhihu / Xiaohongshu / Douyin with QR popover / YouTube) plus docs and version-history entries; every external link goes through the system browser instead of dead \`target=_blank\` anchors in JCEF (by @zhukunpenglinyutong)
-- Rebrand the Marketplace listing and READMEs to **"CC GUI (Claude, Codex and More)"** with the full multi-CLI list (Grok / Kimi / OpenCode / PI / OMP / DeepSeek Harness) and expanded keywords (by @zhukunpenglinyutong)
+- Rebrand the Marketplace listing and READMEs to **"Agent GUI (Claude, Codex and More)"** with the full multi-CLI list (Grok / Kimi / OpenCode / PI / OMP / DeepSeek Harness) and expanded keywords (by @zhukunpenglinyutong)
 
 🔧 Improvements
 - Flatten the **model list directly into the model-config popover**: effort / 1M-context rows sit above an inline model list, so picking a model no longer requires crossing a nested fly-out (by @zhukunpenglinyutong)
@@ -315,7 +315,7 @@ export const CHANGELOG_DATA: ChangelogEntry[] = [
 - 版本记录弹窗新增 **开源横幅与 Star 按钮**：点击 Star 直接在系统浏览器中打开 GitHub 仓库（by @zhukunpenglinyutong）
 - 支持 **在 Provider 切换器中隐藏 CLI Provider**：设置 → 供应商 → CLI 管理页中每张卡片新增眼睛开关，可将对应 Provider 从切换器下拉中移除（已激活的隐藏 Provider 仍可正常使用）；Provider 下拉底部新增 **CLI 设置** 入口，一键跳转到该页面（by @zhukunpenglinyutong）
 - 重做 **设置页社区板块**：改为社交链接行（GitHub / X / 知乎 / 小红书 / 抖音（含二维码浮层）/ YouTube）+ 文档与版本记录入口；所有外部链接统一走系统浏览器打开，避免 JCEF 中 \`target=_blank\` 点击无响应（by @zhukunpenglinyutong）
-- Marketplace 列表与 README 品牌升级为 **「CC GUI（Claude, Codex and More）」**，列出全部多 CLI 支持（Grok / Kimi / OpenCode / PI / OMP / DeepSeek Harness）并扩充搜索关键词（by @zhukunpenglinyutong）
+- Marketplace 列表与 README 品牌升级为 **「Agent GUI（Claude, Codex and More）」**，列出全部多 CLI 支持（Grok / Kimi / OpenCode / PI / OMP / DeepSeek Harness）并扩充搜索关键词（by @zhukunpenglinyutong）
 
 🔧 优化
 - **模型列表平铺进模型配置弹层**：推理强度 / 1M 上下文行位于内联模型列表上方，选模型不再需要穿越嵌套飞出菜单（by @zhukunpenglinyutong）
@@ -1012,7 +1012,7 @@ export const CHANGELOG_DATA: ChangelogEntry[] = [
 🐛 Fixes
 - Fix Codex history sessions failing to load due to two coupled bugs: (1) \`HistoryMessageInjector.handleLoadSession\` used variable shadows so the Codex branch read the unresolved \`currentProvider\` / \`sessionId\` instead of the parsed payload values, causing wrong provider routing; (2) \`CodexMessageConverter.convertFunctionCallToToolUse\` did not map the Codex \`cmd\` field to the frontend \`command\` field, breaking timeline rendering when replaying \`exec_command\` history. Regression tests pinned for both paths
 - Fix Claude daemon process leak on tab provider switch: previously the daemon stayed alive for the rest of the tab's lifetime even after switching to Codex. \`ModelProviderHandler\` now shuts down the lingering daemon on Claude → non-Claude transitions; the daemon is lazily restarted on the next Claude message if the user switches back
-- Fix orphan process scanner falsely identifying daemons belonging to OTHER IDE instances as orphans. When running CC GUI in both IDEA and PyCharm side-by-side, each instance previously listed the other's daemons — "Kill all orphans" would have terminated live work in the foreign IDE. The scanner now checks \`ProcessHandle.parent()\` and only attributes a process to this JVM when its parent PID matches \`ProcessHandle.current().pid()\`
+- Fix orphan process scanner falsely identifying daemons belonging to OTHER IDE instances as orphans. When running Agent GUI in both IDEA and PyCharm side-by-side, each instance previously listed the other's daemons — "Kill all orphans" would have terminated live work in the foreign IDE. The scanner now checks \`ProcessHandle.parent()\` and only attributes a process to this JVM when its parent PID matches \`ProcessHandle.current().pid()\`
 - Fix Node.js child process leaks across 11 short-lived subprocess paths (L1-L11): \`PromptEnhancerHandler\`, \`ClaudeQueryExecutor.executeQueryStream\` / \`executeQuerySync\`, \`ClaudeSessionQueryService\`, \`ClaudeRewindService\`, \`InputHistoryHandler\`, \`NodeJsServiceCaller\`, \`BaseSDKBridge.executeStreamingCommand\`, \`CodexSDKBridge.getMcpServerTools\`. None of these registered the child with \`ProcessManager\`, so a stalled SDK call would leak the Node process for the lifetime of the IDE instance and bypass shutdown cleanup. Each is now registered immediately after \`pb.start()\`, force-killed via \`PlatformUtils.terminateProcess()\` in \`finally\`, and symmetrically unregistered
 - Fix \`PromptEnhancerHandler\` blocking on stalled SDK calls forever: \`process.waitFor()\` had no timeout and a synchronous \`readLine()\` on a stuck stream defeated cancellation. Output is now drained asynchronously and a 60s timeout is enforced
 - Fix \`CodexSDKBridge.getMcpServerTools\` race where concurrent calls overwrote each other's process reference in \`ProcessManager\`'s registry under the shared constant key \`__codex_mcp_tools__\`; each call now generates a unique UUID-suffixed channelId
@@ -1047,7 +1047,7 @@ export const CHANGELOG_DATA: ChangelogEntry[] = [
 🐛 修复
 - 修复 Codex 历史会话点不开的问题：根因是两个耦合 bug——(1) \`HistoryMessageInjector.handleLoadSession\` 内变量影子写错，Codex 分支读到了未解析的 \`currentProvider\` / \`sessionId\` 而不是 payload 解析后的值，导致 provider 路由错乱；(2) \`CodexMessageConverter.convertFunctionCallToToolUse\` 未把 Codex 协议的 \`cmd\` 字段映射为前端期望的 \`command\` 字段，导致 \`exec_command\` 历史回放时间线全空白。两条路径都补上了防回归测试
 - 修复 Tab 从 Claude 切换到 Codex 后 Claude daemon 不关闭导致进程泄漏的问题：之前用户在 Tab 切换 provider 类型到 Codex 后，原 Claude daemon 会一直存活到 Tab 关闭。现在 \`ModelProviderHandler\` 会在 Claude → 非 Claude 切换时主动关闭 daemon；用户切回 Claude 时下条消息会自动重新启动新 daemon
-- 修复多 IDE 实例下孤立进程误判的问题：之前同时打开 IDEA + PyCharm 跑 CC GUI 时，两个实例会把对方的 daemon 当成自己的孤立进程显示，「清理所有孤立进程」会误杀另一个 IDE 正在运行的对话。现在通过 \`ProcessHandle.parent()\` 比对当前 JVM PID，每个实例只认领自己 fork 出来的真正孤立进程
+- 修复多 IDE 实例下孤立进程误判的问题：之前同时打开 IDEA + PyCharm 跑 Agent GUI 时，两个实例会把对方的 daemon 当成自己的孤立进程显示，「清理所有孤立进程」会误杀另一个 IDE 正在运行的对话。现在通过 \`ProcessHandle.parent()\` 比对当前 JVM PID，每个实例只认领自己 fork 出来的真正孤立进程
 - 修复 11 处 Node.js 短生命周期子进程泄漏（L1-L11）：\`PromptEnhancerHandler\`、\`ClaudeQueryExecutor.executeQueryStream\` / \`executeQuerySync\`、\`ClaudeSessionQueryService\`、\`ClaudeRewindService\`、\`InputHistoryHandler\`、\`NodeJsServiceCaller\`、\`BaseSDKBridge.executeStreamingCommand\`、\`CodexSDKBridge.getMcpServerTools\`。这些路径以前都没有把 fork 出来的子进程注册到 \`ProcessManager\`，导致 SDK 卡死时子进程能存活到 IDE 退出，绕过关机清理。现在每处都在 \`pb.start()\` 后立即注册，\`finally\` 块中通过 \`PlatformUtils.terminateProcess()\` 强制终止，并对称取消注册
 - 修复 \`PromptEnhancerHandler\` 在 SDK 卡死时永久阻塞调用线程的问题：\`process.waitFor()\` 没有超时，且同步 \`readLine()\` 读卡住的流根本无法被超时打断。改为异步消耗 stdout + 60 秒硬性超时
 - 修复 \`CodexSDKBridge.getMcpServerTools\` 并发竞争：之前用常量 key \`__codex_mcp_tools__\` 注册到 \`ProcessManager\`，并发调用会互相覆盖 Process 引用，被覆盖的子进程无法再被取消注册。现在每次调用生成 UUID 后缀的唯一 channelId
@@ -1198,7 +1198,7 @@ export const CHANGELOG_DATA: ChangelogEntry[] = [
 
 🔧 Improvements
 - Replace single-element array concurrency workaround with AtomicBoolean/AtomicReference throughout the SDK bridge layer
-- Unify all editor action icons to use cc-gui-icon for a consistent visual identity
+- Unify all editor action icons to use agent-gui-icon for a consistent visual identity
 - Improve attachment handling and model resolution in ai-bridge with vision model detection
 - Extract loadMcpServersConfigAsRecord helper to prevent empty MCP config from leaking into SDK options
 - Remove brand icon from task completion toast for a simpler, lighter notification layout
@@ -1242,7 +1242,7 @@ export const CHANGELOG_DATA: ChangelogEntry[] = [
 
 🔧 Improvements
 - 将 SDK Bridge 层中的单元素数组并发变通方案替换为 AtomicBoolean/AtomicReference
-- 统一所有编辑器操作图标为 cc-gui-icon，提供一致的视觉标识
+- 统一所有编辑器操作图标为 agent-gui-icon，提供一致的视觉标识
 - 改进 ai-bridge 中的附件处理和模型解析逻辑，新增视觉模型检测
 - 提取 loadMcpServersConfigAsRecord 工具函数，避免空 MCP 配置被错误传入 SDK 选项
 - 移除任务完成 Toast 中的品牌图标，布局更简洁轻量
@@ -1328,7 +1328,7 @@ export const CHANGELOG_DATA: ChangelogEntry[] = [
     content: {
       en: `✨ Features
 - Add console and Terminal selection sending: send selected Run/Debug console text or Terminal text directly into the chat input, with IntelliJ 2024.3+ terminal compatibility and localized action labels
-- Add editor tab file-path sending: quickly send the current editor tab path to CC GUI from tab actions
+- Add editor tab file-path sending: quickly send the current editor tab path to Agent GUI from tab actions
 - Add UI font configuration: configure chat/webview font family and size from settings, with IDE font fallback and persisted appearance preferences
 - Improve history browsing: add session ID copy controls, file size display, and lite-read / mtime-driven incremental scanning for faster Claude and Codex session loading
 - Update model options: add GPT-5.5 support, restore GPT-5.2 as a selectable option, and refine search-style tool expansion affordances
@@ -1350,7 +1350,7 @@ export const CHANGELOG_DATA: ChangelogEntry[] = [
 - Refresh related i18n strings across supported locales for new actions, settings, history labels, and model/provider UI copy`,
       zh: `✨ Features
 - 新增控制台与 Terminal 选中文本发送能力：可将 Run/Debug 控制台或 Terminal 中的选中文本直接发送到聊天输入框，并兼容 IntelliJ 2024.3+ 新版 Terminal，同时补齐本地化动作文案
-- 新增编辑器标签页发送文件路径动作：可从标签页操作中快速把当前文件路径发送到 CC GUI
+- 新增编辑器标签页发送文件路径动作：可从标签页操作中快速把当前文件路径发送到 Agent GUI
 - 新增 UI 字体配置：支持在设置中配置聊天/webview 字体族与字号，自动回退 IDE 字体并持久化外观偏好
 - 优化历史记录浏览：新增会话 ID 复制、文件大小展示，以及基于 lite-read 和 mtime 的增量扫描，加快 Claude 与 Codex 会话加载
 - 更新模型选项：新增 GPT-5.5 支持，恢复 GPT-5.2 可选项，并优化搜索类工具的展开视觉表现
@@ -1531,8 +1531,8 @@ export const CHANGELOG_DATA: ChangelogEntry[] = [
 🔧 Improvements
 - Add unit tests for StreamDeltaThrottler, DaemonBridge, and MessageJsonConverter
 - Remove unused CursorHandler
-- Update action icons with unified cc-gui-icon.svg for SendSelection, QuickFix, and SendFilePath actions; redesign cc-gui-icon.svg with new visual style
-- Rename "Send to CCG" to "Send File Path to CC GUI" across all 9 languages; rename CCG → CC GUI in all i18n message strings`,
+- Update action icons with unified agent-gui-icon.svg for SendSelection, QuickFix, and SendFilePath actions; redesign agent-gui-icon.svg with new visual style
+- Rename "Send to CCG" to "Send File Path to Agent GUI" across all 9 languages; rename CCG → Agent GUI in all i18n message strings`,
       zh: `✨ Features
 - 新增 Provider 运行时状态检测：引入 getClaudeRuntimeState() 判断访问模式（managed/local/cli_login/inactive），仅在 local 和 cli_login 模式下注入代理/TLS 环境变量，每次 setupApiKey() 调用时清除已注入变量防止旧值泄漏
 - 重命名 ANTHROPIC_DEFAULT_HAIKU_MODEL → ANTHROPIC_SMALL_FAST_MODEL，覆盖 Provider 预设、ProviderDialog、类型和模型状态 hooks；在 CLAUDE_MODEL_MAPPING_ENV_KEYS 中保留旧 key 以兼容旧版
@@ -1550,8 +1550,8 @@ export const CHANGELOG_DATA: ChangelogEntry[] = [
 🔧 Improvements
 - 新增 StreamDeltaThrottler、DaemonBridge、MessageJsonConverter 单元测试
 - 移除未使用的 CursorHandler
-- 统一使用新版 cc-gui-icon.svg 更新 SendSelection、QuickFix、SendFilePath 操作图标；重新设计 cc-gui-icon.svg 视觉风格
-- 将"Send to CCG"重命名为"Send File Path to CC GUI"，9 种语言全部更新；将 i18n 消息字符串中 CCG 统一重命名为 CC GUI`,
+- 统一使用新版 agent-gui-icon.svg 更新 SendSelection、QuickFix、SendFilePath 操作图标；重新设计 agent-gui-icon.svg 视觉风格
+- 将"Send to CCG"重命名为"Send File Path to Agent GUI"，9 种语言全部更新；将 i18n 消息字符串中 CCG 统一重命名为 Agent GUI`,
     },
   },
   {
@@ -1645,7 +1645,7 @@ export const CHANGELOG_DATA: ChangelogEntry[] = [
     date: '2026-03-15',
     content: {
       en: `✨ Features
-- Rename project to CC GUI (originally Claude Code GUI) to mitigate trademark risks, update plugin ID and icons
+- Rename project to Agent GUI (originally Claude Code GUI) to mitigate trademark risks, update plugin ID and icons
 - Change default Codex sandbox mode to danger-full-access to reduce friction for commands requiring broader permissions (e.g. adb, docker)
 - Add GitHub repository section to community settings page with copy-to-clipboard URL support
 - Default autoOpenFile to disabled (previously enabled by default)
@@ -1666,7 +1666,7 @@ export const CHANGELOG_DATA: ChangelogEntry[] = [
 - Refactor FileHandler (849→304 lines), HistoryHandler (810→120 lines), ClaudeHistoryReader (1200→350 lines), App.tsx (1951→640 lines) into focused modules
 - Extract Claude model mapping logic to claudeModelMapping utility module with tests (#639) #JackCmd233`,
       zh: `✨ Features
-- 项目重命名为 CC GUI（原 Claude Code GUI），规避商标风险，更新插件 ID 和图标
+- 项目重命名为 Agent GUI（原 Claude Code GUI），规避商标风险，更新插件 ID 和图标
 - 将 Codex 默认沙箱模式改为 danger-full-access，减少需要广泛权限的命令（如 adb、docker）的使用阻力
 - 社区设置页新增 GitHub 开源地址区域，支持一键复制仓库 URL
 - autoOpenFile 默认值改为关闭（之前默认开启）

@@ -201,7 +201,7 @@ describe('useGlobalCallbacks', () => {
     const { getTextContent } = renderUseGlobalCallbacks(editable);
 
     // Simulate the real repro: user selected text inside the box earlier, then went
-    // back to the IDE editor and triggered "Add selection to CC GUI". The webview's
+    // back to the IDE editor and triggered "Add selection to Agent GUI". The webview's
     // stale select-all range is still non-collapsed and still anchored in editable.
     editable.blur();
     const selectAll = document.createRange();
