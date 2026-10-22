@@ -5,7 +5,7 @@
 If you discover a security vulnerability in Agent GUI, please follow the steps below to report it:
 
 1. **How to Report**
-   You can submit a report at https://github.com/xinhehe666/jetbrains-cc-gui/security/advisories
+   You can submit a report at https://github.com/xinhehe666/jetbrains-agent-gui/security/advisories
 
 2. **Response Time**
    - We will acknowledge receipt of your report within 48 hours.

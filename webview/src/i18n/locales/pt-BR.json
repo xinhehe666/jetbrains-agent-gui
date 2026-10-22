@@ -680,7 +680,7 @@
             "proxyConfigCodeLabel": "~/.claude/settings.json",
             "proxyConfigCode": "{\n  \"env\": {\n    \"HTTP_PROXY\": \"http://127.0.0.1:7897\",\n    \"HTTPS_PROXY\": \"http://127.0.0.1:7897\"\n  }\n}",
             "issuePrefix": "Se ainda não funcionar, por favor reporte um issue no GitHub: ",
-            "issueUrl": "https://github.com/xinhehe666/jetbrains-cc-gui/issues"
+            "issueUrl": "https://github.com/xinhehe666/jetbrains-agent-gui/issues"
           },
           "codex": {
             "title": "Configuração da Conta por Assinatura do Codex",
@@ -694,7 +694,7 @@
             "proxyConfigCodeLabel": "",
             "proxyConfigCode": "",
             "issuePrefix": "Se ainda não funcionar, por favor reporte um issue no GitHub: ",
-            "issueUrl": "https://github.com/xinhehe666/jetbrains-cc-gui/issues"
+            "issueUrl": "https://github.com/xinhehe666/jetbrains-agent-gui/issues"
           }
         }
       },

@@ -619,7 +619,7 @@
             "proxyConfigCodeLabel": "~/.claude/settings.json",
             "proxyConfigCode": "{\n  \"env\": {\n    \"HTTP_PROXY\": \"http://127.0.0.1:7897\",\n    \"HTTPS_PROXY\": \"http://127.0.0.1:7897\"\n  }\n}",
             "issuePrefix": "Si todavía no funciona, reporta un problema en GitHub: ",
-            "issueUrl": "https://github.com/xinhehe666/jetbrains-cc-gui/issues"
+            "issueUrl": "https://github.com/xinhehe666/jetbrains-agent-gui/issues"
           },
           "codex": {
             "title": "Configuración de cuenta de suscripción Codex",
@@ -633,7 +633,7 @@
             "proxyConfigCodeLabel": "",
             "proxyConfigCode": "",
             "issuePrefix": "Si todavía no funciona, reporta un problema en GitHub: ",
-            "issueUrl": "https://github.com/xinhehe666/jetbrains-cc-gui/issues"
+            "issueUrl": "https://github.com/xinhehe666/jetbrains-agent-gui/issues"
           }
         }
       },

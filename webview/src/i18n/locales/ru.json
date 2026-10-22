@@ -631,7 +631,7 @@
             "proxyConfigCodeLabel": "~/.claude/settings.json",
             "proxyConfigCode": "{\n  \"env\": {\n    \"HTTP_PROXY\": \"http://127.0.0.1:7897\",\n    \"HTTPS_PROXY\": \"http://127.0.0.1:7897\"\n  }\n}",
             "issuePrefix": "Если это всё ещё не работает, сообщите о проблеме на GitHub: ",
-            "issueUrl": "https://github.com/xinhehe666/jetbrains-cc-gui/issues"
+            "issueUrl": "https://github.com/xinhehe666/jetbrains-agent-gui/issues"
           },
           "codex": {
             "title": "Настройка аккаунта подписки Codex",
@@ -645,7 +645,7 @@
             "proxyConfigCodeLabel": "",
             "proxyConfigCode": "",
             "issuePrefix": "Если это всё ещё не работает, сообщите о проблеме на GitHub: ",
-            "issueUrl": "https://github.com/xinhehe666/jetbrains-cc-gui/issues"
+            "issueUrl": "https://github.com/xinhehe666/jetbrains-agent-gui/issues"
           }
         }
       },

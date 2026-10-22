@@ -636,7 +636,7 @@
             "proxyConfigCodeLabel": "~/.claude/settings.json",
             "proxyConfigCode": "{\n  \"env\": {\n    \"HTTP_PROXY\": \"http://127.0.0.1:7897\",\n    \"HTTPS_PROXY\": \"http://127.0.0.1:7897\"\n  }\n}",
             "issuePrefix": "如果還是不行，可以去GitHub留言排查：",
-            "issueUrl": "https://github.com/xinhehe666/jetbrains-cc-gui/issues"
+            "issueUrl": "https://github.com/xinhehe666/jetbrains-agent-gui/issues"
           },
           "codex": {
             "title": "Codex 訂閱制帳號使用方式",
@@ -650,7 +650,7 @@
             "proxyConfigCodeLabel": "",
             "proxyConfigCode": "",
             "issuePrefix": "如果還是不行，可以去GitHub留言排查：",
-            "issueUrl": "https://github.com/xinhehe666/jetbrains-cc-gui/issues"
+            "issueUrl": "https://github.com/xinhehe666/jetbrains-agent-gui/issues"
           }
         }
       },

@@ -22,11 +22,11 @@ describe('CommunitySection', () => {
     render(<CommunitySection />);
 
     expect(screen.getByRole('link', { name: 'GitHub repository' }).getAttribute('href'))
-      .toBe('https://github.com/xinhehe666/jetbrains-cc-gui');
+      .toBe('https://github.com/xinhehe666/jetbrains-agent-gui');
     expect(screen.getByRole('link', { name: 'Report an issue' }).getAttribute('href'))
-      .toBe('https://github.com/xinhehe666/jetbrains-cc-gui/issues');
+      .toBe('https://github.com/xinhehe666/jetbrains-agent-gui/issues');
     expect(screen.getByRole('link', { name: 'Documentation' }).getAttribute('href'))
-      .toBe('https://github.com/xinhehe666/jetbrains-cc-gui#readme');
+      .toBe('https://github.com/xinhehe666/jetbrains-agent-gui#readme');
     expect(screen.queryByText(/WeChat|Douyin|Zhihu|YouTube/i)).toBeNull();
   });
 });

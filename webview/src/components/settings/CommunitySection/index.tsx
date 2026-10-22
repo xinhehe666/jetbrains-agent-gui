@@ -6,7 +6,7 @@ import { CHANGELOG_DATA } from '../../../version/changelog';
 import { openBrowser } from '../../../utils/bridge';
 import styles from './style.module.less';
 
-const GITHUB_URL = 'https://github.com/xinhehe666/jetbrains-cc-gui';
+const GITHUB_URL = 'https://github.com/xinhehe666/jetbrains-agent-gui';
 const ISSUES_URL = `${GITHUB_URL}/issues`;
 
 const GITHUB_PATH =

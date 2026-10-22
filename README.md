@@ -145,5 +145,5 @@ Agent GUI is an independent fork of [CC GUI](https://github.com/zhukunpenglinyut
 
 <!-- LINK GROUP -->
 
-[github-issues-shield]: https://img.shields.io/github/issues/xinhehe666/jetbrains-cc-gui?color=ff80eb&labelColor=black&style=flat-square
+[github-issues-shield]: https://img.shields.io/github/issues/xinhehe666/jetbrains-agent-gui?color=ff80eb&labelColor=black&style=flat-square
 [github-mit]: https://img.shields.io/badge/github-MIT-blue?logo=github

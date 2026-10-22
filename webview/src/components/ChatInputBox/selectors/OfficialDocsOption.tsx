@@ -7,10 +7,10 @@ import {
 } from './selectorStyles';
 
 const DOCS_URLS: Record<string, string> = {
-  zh: 'https://github.com/xinhehe666/jetbrains-cc-gui#readme',
-  'zh-TW': 'https://github.com/xinhehe666/jetbrains-cc-gui#readme',
+  zh: 'https://github.com/xinhehe666/jetbrains-agent-gui#readme',
+  'zh-TW': 'https://github.com/xinhehe666/jetbrains-agent-gui#readme',
 };
-const DEFAULT_DOCS_URL = 'https://github.com/xinhehe666/jetbrains-cc-gui#readme';
+const DEFAULT_DOCS_URL = 'https://github.com/xinhehe666/jetbrains-agent-gui#readme';
 
 const resolveDocsUrl = (language: string): string => {
   if (language.startsWith('zh-TW') || language.startsWith('zh-Hant')) {
